@@ -1,0 +1,65 @@
+version: "3.9"
+
+services:
+
+  postgres:
+
+    image: postgres:16-alpine
+
+    container_name: ananse_postgres
+
+    restart: unless-stopped
+
+    environment:
+
+      POSTGRES_DB: referrals
+
+      POSTGRES_USER: referrals
+
+      POSTGRES_PASSWORD: referrals
+
+    ports:
+
+      - "5433:5432"
+
+    volumes:
+
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+
+    build:
+
+      context: ./backend
+
+    container_name: ananse_backend
+
+    command: >
+
+      sh -c "
+
+      python manage.py migrate &&
+
+      python manage.py runserver 0.0.0.0:8000
+
+      "
+
+    volumes:
+
+      - ./backend:/app
+
+    ports:
+
+      - "8000:8000"
+
+    depends_on:
+
+      - postgres
+
+    env_file:
+
+      - backend/.env
+
+volumes:
+
+  postgres_data:

@@ -1,0 +1,182 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  color: #111;
+  background: #fff;
+}
+
+.landing-header {
+  height: 90px;
+  display: flex;
+  align-items: center;
+  padding: 0 7%;
+  border-bottom: 1px solid #ddd;
+}
+
+.logo {
+  font-size: 42px;
+  font-weight: 900;
+  letter-spacing: -4px;
+  text-transform: lowercase;
+}
+
+.logo span {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 5px;
+  font-weight: 400;
+  text-align: center;
+  margin-top: -4px;
+}
+
+.hero {
+  min-height: 600px;
+  display: flex;
+  align-items: center;
+  padding: 80px 10%;
+  background:
+    linear-gradient(
+      rgba(0, 0, 0, 0.25),
+      rgba(0, 0, 0, 0.25)
+    ),
+    url("https://images.unsplash.com/photo-1539109136881-3be0616acf4b")
+    center / cover;
+}
+
+.hero-content {
+  color: white;
+  max-width: 700px;
+}
+
+.eyebrow {
+  font-size: 12px;
+  letter-spacing: 3px;
+  font-weight: bold;
+}
+
+.hero h1 {
+  font-size: clamp(48px, 7vw, 90px);
+  line-height: 0.95;
+  font-weight: 400;
+  margin: 20px 0;
+}
+
+.hero-text {
+  max-width: 500px;
+  font-size: 20px;
+  line-height: 1.6;
+}
+
+.form-section {
+  padding: 100px 20px;
+}
+
+.form-container {
+  max-width: 700px;
+  margin: auto;
+}
+
+.form-container h2 {
+  font-size: 42px;
+  font-weight: 400;
+}
+
+.form-container > p {
+  line-height: 1.7;
+  color: #555;
+}
+
+form {
+  margin-top: 50px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+input,
+textarea {
+  width: 100%;
+  padding: 18px;
+  margin-bottom: 15px;
+  border: 1px solid #bbb;
+  font: inherit;
+}
+
+textarea {
+  resize: vertical;
+}
+
+.interest-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin: 20px 0;
+}
+
+.interest-options button {
+  padding: 25px;
+  background: white;
+  border: 1px solid #999;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.interest-options button.selected {
+  background: #111;
+  color: white;
+  border-color: #111;
+}
+
+.submit-button {
+  width: 100%;
+  padding: 20px;
+  border: none;
+  background: #111;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.submit-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.error {
+  color: #b00020 !important;
+}
+
+.success-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 30px;
+}
+
+@media (max-width: 700px) {
+
+  .form-grid,
+  .interest-options {
+    grid-template-columns: 1fr;
+  }
+
+  .hero {
+    min-height: 500px;
+    padding: 50px 30px;
+  }
+
+  .landing-header {
+    padding: 0 30px;
+  }
+
+}
