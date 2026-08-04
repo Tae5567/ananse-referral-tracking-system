@@ -92,9 +92,15 @@ DATABASES = {
     }
 }
 
+REST_FRAMEWORK = {
+    "EXCEPTION_HANDLER": "common.exceptions.custom_exception_handler",
+}
+
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
 ]
+
+CORS_ALLOW_CREDENTIALS = True
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators

@@ -58,10 +58,13 @@ class Lead(TimestampedModel):
         blank=True,
     )
 
-    email = models.EmailField()
+    email = models.EmailField(
+        db_index=True
+    )
 
     phone = models.CharField(
-        max_length=30,
+        max_length=20,
+        db_index=True
     )
 
     interest = models.CharField(

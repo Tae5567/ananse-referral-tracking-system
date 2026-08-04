@@ -1,30 +1,21 @@
-import {BrowserRouter, Routes, Route} from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-import CamilleLanding from "./pages/CamilleLanding";
-//import ThankYou from "./pages/ThankYou";
+import ReferralLanding from "./pages/ReferralLanding";
+import InquiryPage from "./pages/InquiryPage";
+import ThankYou from "./pages/ThankYou";
+import NotFound from "./pages/NotFound";
 
 function App() {
-
-  return (
-    <BrowserRouter>
-
-      <Routes>
-
-        <Route
-          path="/r/:code"
-          element={<CamilleLanding />}
-        />
-
-         <Route
-          path="/r/:thank-you"
-          element={<ThankYou />}
-        />
-
-      </Routes>
-
-    </BrowserRouter>
-  );
-
+    return (
+        <BrowserRouter>
+            <Routes>
+                <Route path="/r/:code" element={<ReferralLanding />} />
+                <Route path="/inquiry" element={<InquiryPage />} />
+                <Route path="/thank-you" element={<ThankYou />} />
+                <Route path="*" element={<NotFound />} />
+            </Routes>
+        </BrowserRouter>
+    );
 }
 
 export default App;
