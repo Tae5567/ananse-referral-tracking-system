@@ -6,12 +6,14 @@ from .models import Lead
 
 @admin.register(Lead)
 class LeadAdmin(admin.ModelAdmin):
+
     list_display = (
         "first_name",
         "last_name",
         "email",
         "phone",
         "interest",
+        "service_name",
         "status",
         "referral",
     )
@@ -26,4 +28,5 @@ class LeadAdmin(admin.ModelAdmin):
         "last_name",
         "email",
         "phone",
+        "service_name",
     )

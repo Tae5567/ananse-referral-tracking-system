@@ -2,6 +2,8 @@ import uuid
 
 from django.http import Http404
 from django.shortcuts import render
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.utils.decorators import method_decorator
 
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -15,7 +17,7 @@ from .models import Visitor
 from.serializers import ReferralSerializer
 
 # Create your views here.
-
+@method_decorator(ensure_csrf_cookie, name="dispatch")
 class ReferralLandingAPIView(APIView):
     """
     Called when React loads /r/<code>

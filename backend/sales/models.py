@@ -1,120 +1,115 @@
 from django.db import models
 
-from decimal import Decimal
-
 from common.models import TimestampedModel
 from leads.models import Lead
-from referrals.models import Referral
 
 
-# Create your models here.
-class FashionHubOrder(TimestampedModel):
-    # Imported from the Ananse Daily Transactions CVS export
+class Order(TimestampedModel):
+    """
+    A transaction imported from the Ananse Center for Design
+    / Fashion Hub transaction export.
+    """
 
-    class MatchMethod(models.TextChoices):
-        EMAIL = "email", "Email"
-        PHONE = "phone", "Phone"
-        MANUAL = "manual", "Manual"
-
-    order_reference = models.CharField(max_length=100, unique=True,)
-
-
-    referral = models.ForeignKey(
-        Referral,
-        on_delete=models.CASCADE,
-        related_name="orders",
+    external_id = models.CharField(
+        max_length=100,
+        unique=True,
+        db_index=True,
     )
 
-    lead = models.ForeignKey(
-        Lead,
-        on_delete=models.SET_NULL,
-        null=True,
+    reference = models.CharField(
+        max_length=150,
         blank=True,
-        related_name="orders",
+        db_index=True,
     )
 
-    customer_name = models.CharField(
-        max_length=200,
+    status = models.CharField(
+        max_length=100,
+        blank=True,
+    )
+
+    customer_first_name = models.CharField(
+        max_length=100,
+        blank=True,
+    )
+
+    customer_last_name = models.CharField(
+        max_length=100,
+        blank=True,
     )
 
     customer_email = models.EmailField(
         blank=True,
+        db_index=True,
     )
 
     customer_phone = models.CharField(
         max_length=30,
         blank=True,
+        db_index=True,
+    )
+
+    product_name = models.CharField(
+        max_length=255,
+        blank=True,
+    )
+
+    product_code = models.CharField(
+        max_length=150,
+        blank=True,
+    )
+
+    quantity = models.PositiveIntegerField(
+        default=1,
+    )
+
+    subtotal = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+    )
+
+    tax_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
     )
 
     total_amount = models.DecimalField(
         max_digits=12,
         decimal_places=2,
+        default=0,
     )
 
-    tax_rate = models.DecimalField(
-        max_digits=5,
-        decimal_places=3,
-        default=Decimal("0.075"),
-    )
-
-    matched = models.BooleanField(
-        default=False,
-    )
-
-    match_method = models.CharField(
-        max_length=20,
-        choices=MatchMethod.choices,
+    purchase_date = models.DateTimeField(
+        null=True,
         blank=True,
     )
 
-    order_date = models.DateTimeField()
-
-    def __str__(self):
-        return self.order_reference
-
-
-class ManualSale(TimestampedModel):
-    # Services that aren't purchased through alpha.ananse
-
-    class PaymentMethod(models.TextChoices):
-        BANK_TRANSFER = "bank_transfer", "Bank Transfer"
-        CASH = "cash", "Cash"
-        POS = "pos", "POS"
-        OTHER = "other", "Other"
-
-    referral = models.ForeignKey(
-        Referral,
-        on_delete=models.CASCADE,
-        related_name="manual_sales",
-    )
-
-    lead = models.ForeignKey(
+    matched_lead = models.ForeignKey(
         Lead,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="manual_sales",
+        related_name="orders",
     )
 
-    customer_name = models.CharField(max_length=200,)
-
-    service_name = models.CharField(max_length=200,)
-
-    amount = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-    )
-
-    payment_method = models.CharField(
+    match_method = models.CharField(
         max_length=30,
-        choices=PaymentMethod.choices,
+        blank=True,
     )
 
-    notes = models.TextField(blank=True,)
+    raw_data = models.JSONField(
+        default=dict,
+        blank=True,
+    )
 
-    sale_date = models.DateField()
+    imported_at = models.DateTimeField(
+        auto_now_add=True,
+    )
 
     def __str__(self):
-        return f"{self.customer_name} - {self.service_name}"
+        return f"{self.reference or self.external_id} - {self.customer_email}"
 
-
+    @property
+    def is_matched(self):
+        return self.matched_lead_id is not None

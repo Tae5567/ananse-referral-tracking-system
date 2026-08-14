@@ -1,33 +1,38 @@
 from django.contrib import admin
 
-from .models import FashionHubOrder
-from .models import ManualSale
+from .models import Order
 
-# Register your models here.
-@admin.register(FashionHubOrder)
-class FashionHubOrderAdmin(admin.ModelAdmin):
+
+@admin.register(Order)
+class OrderAdmin(admin.ModelAdmin):
+
     list_display = (
-        "order_reference",
-        "customer_name",
+        "reference",
+        "customer_email",
+        "customer_phone",
+        "product_name",
         "total_amount",
-        "matched",
+        "matched_lead",
         "match_method",
-        "order_date",
+        "status",
+        "purchase_date",
+    )
+
+    list_filter = (
+        "status",
+        "match_method",
     )
 
     search_fields = (
-        "order_reference",
-        "customer_name",
+        "reference",
+        "external_id",
         "customer_email",
+        "customer_phone",
+        "customer_first_name",
+        "customer_last_name",
+        "product_name",
     )
 
-
-@admin.register(ManualSale)
-class ManualSaleAdmin(admin.ModelAdmin):
-    list_display = (
-        "customer_name",
-        "service_name",
-        "amount",
-        "payment_method",
-        "sale_date",
+    readonly_fields = (
+        "imported_at",
     )

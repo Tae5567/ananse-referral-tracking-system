@@ -1,11 +1,15 @@
 import { useState } from "react";
 import api from "../services/api";
+import { getCookie } from "../utils/csrf";
+import { useNavigate } from "react-router-dom";
 
 function LeadForm({ referralCode }) {
 
     const [submitted, setSubmitted] = useState(false);
 
     const [loading, setLoading] = useState(false);
+
+    const navigate = useNavigate();
 
     const [form, setForm] = useState({
         first_name: "",
@@ -28,20 +32,31 @@ function LeadForm({ referralCode }) {
         setLoading(true);
 
         try {
+    // Get CSRF token from Django
+    const csrfResponse = await api.get("csrf/");
 
-            await api.post("leads/", {
-                ...form,
-                referral_code: referralCode,
-            });
+    const csrfToken = csrfResponse.data.csrfToken;
 
-            setSubmitted(true);
-
-        } catch (err) {
-
-            console.error(err);
-            alert("Something went wrong.");
-
+    // Submit lead with CSRF token
+    await api.post(
+        "leads/",
+        {
+            ...form,
+            referral_code: referralCode,
+        },
+        {
+            headers: {
+                "X-CSRFToken": csrfToken,
+            },
         }
+    );
+
+    navigate("/services");
+
+} catch (err) {
+    console.error(err);
+    alert("Something went wrong.");
+}
 
         setLoading(false);
 

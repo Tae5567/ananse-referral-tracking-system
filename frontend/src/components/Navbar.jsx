@@ -12,7 +12,6 @@ function Navbar() {
 
                 <div className="hidden md:flex items-center gap-8 text-sm text-gray-700">
                     <a href="#about" className="hover:text-black">About</a>
-                    <a href="#services" className="hover:text-black">Services</a>
                     <a href="#contact" className="hover:text-black">Contact</a>
                 </div>
             </div>

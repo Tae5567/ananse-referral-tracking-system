@@ -1,34 +1,33 @@
 import re
 
 
-def normalize_phone(phone: str) -> str:
+def normalize_phone(phone):
     """
-    Normalize Nigerian phone numbers.
-
-    Examples:
-
-    08031234567
-    +2348031234567
-    2348031234567
-    8031234567
-
-    all become
-
-    +2348031234567
+    Normalize Nigerian phone numbers to:
+    234XXXXXXXXXX
     """
 
     if not phone:
         return ""
 
-    phone = re.sub(r"\D", "", phone)
+    phone = str(phone).strip()
 
-    if phone.startswith("0"):
-        phone = "234" + phone[1:]
+    # Keep numbers only
+    digits = re.sub(r"\D", "", phone)
 
-    elif phone.startswith("234"):
-        pass
+    if not digits:
+        return ""
 
-    elif len(phone) == 10:
-        phone = "234" + phone
+    # 08149572355 -> 2348149572355
+    if digits.startswith("0") and len(digits) == 11:
+        return "234" + digits[1:]
 
-    return "+" + phone
+    # 8149572355 -> 2348149572355
+    if len(digits) == 10:
+        return "234" + digits
+
+    # 2348149572355
+    if digits.startswith("234") and len(digits) == 13:
+        return digits
+
+    return digits

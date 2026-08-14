@@ -8,22 +8,24 @@ from .models import Lead
 class LeadCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
-
         model = Lead
-
-        fields = (
+        fields = [
+            "id",
             "first_name",
             "last_name",
             "email",
             "phone",
+            "referral",
             "interest",
+            "service_name",
             "inquiry_message",
-        )
+            "status",
+            "created_at",
+        ]
 
-    def validate_email(self, value):
-
-        return value.strip().lower()
-
-    def validate_phone(self, value):
-
-        return normalize_phone(value)
+        read_only_fields = [
+            "id",
+            "referral",
+            "status",
+            "created_at",
+        ]

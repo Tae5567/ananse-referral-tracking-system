@@ -11,7 +11,7 @@ class Lead(TimestampedModel):
 
         FASHION_HUB = (
             "fashion_hub",
-            "FashionHub Purchase",
+            "Ananse Center for Design",
         )
 
         CUSTOM_SERVICE = (
@@ -59,17 +59,18 @@ class Lead(TimestampedModel):
     )
 
     email = models.EmailField(
-        db_index=True
+        db_index=True,
     )
 
     phone = models.CharField(
         max_length=20,
-        db_index=True
+        db_index=True,
     )
 
     interest = models.CharField(
         max_length=30,
         choices=Interest.choices,
+        blank=True,
     )
 
     status = models.CharField(
@@ -77,6 +78,12 @@ class Lead(TimestampedModel):
         choices=Status.choices,
         default=Status.NEW,
     )
+
+    service_name = models.CharField(
+        max_length=255,
+        blank=True,
+    )
+
 
     inquiry_message = models.TextField(
         blank=True,
