@@ -1,14 +1,21 @@
 import { useNavigate } from "react-router-dom";
 import services from "../data/services";
 
+import { useSearchParams } from "react-router-dom";
+
 function ServicesPage() {
     const navigate = useNavigate();
+
+    const [searchParams] = useSearchParams();
+
+    const referralCode = searchParams.get("ref") || "";
 
     const handleServiceClick = (service) => {
         if (!service.paymentUrl) {
             navigate("/inquiry");
             return;
         }
+
 
         window.location.href = service.paymentUrl;
     };
@@ -81,7 +88,7 @@ function ServicesPage() {
 
                     <button
                         type="button"
-                        onClick={() => navigate("/inquiry")}
+                        onClick={() => navigate(`/inquiry?ref=${referralCode}`)}
                         className="mt-3 font-semibold underline underline-offset-4"
                     >
                         Tell Camille what you need

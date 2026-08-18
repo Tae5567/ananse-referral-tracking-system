@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 
+import { useSearchParams } from "react-router-dom";
+
 function InquiryPage() {
     const navigate = useNavigate();
 
@@ -9,6 +11,10 @@ function InquiryPage() {
     const [serviceName, setServiceName] = useState("");
     const [loading, setLoading] = useState(false);
     const [submitted, setSubmitted] = useState(false);
+
+    const [searchParams] = useSearchParams();
+
+    const referralCode = searchParams.get("ref") || "";
 
     const submitInquiry = async (e) => {
         e.preventDefault();
@@ -22,11 +28,26 @@ function InquiryPage() {
 try {
     await api.get("csrf/");
 
-    await api.post("leads/inquiry/", {
-        referral_code: "camille",
-        service_name: serviceName,
-        inquiry_message: message,
-    });
+    const csrfToken = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("csrftoken="))
+        ?.split("=")[1];
+
+    console.log("CSRF token:", csrfToken);
+
+    await api.post(
+        "leads/inquiry/",
+        {
+            referral_code: referralCode,
+            service_name: serviceName,
+            inquiry_message: message,
+        },
+        {
+            headers: {
+                "X-CSRFToken": csrfToken,
+            },
+        }
+    );
 
     setSubmitted(true);
 
@@ -34,6 +55,7 @@ try {
     console.error("Inquiry submission error:", error);
 
     if (error.response) {
+        console.error("Status:", error.response.status);
         console.error("Response:", error.response.data);
     }
 
@@ -41,8 +63,8 @@ try {
 
 } finally {
     setLoading(false);
-}
-    };
+};
+    }
 
     if (submitted) {
         return (
@@ -58,7 +80,7 @@ try {
                     </p>
 
                     <button
-                        onClick={() => navigate("/services")}
+                        onClick={() => navigate(`/services?ref=${referralCode}`)}
                         className="mt-8 rounded-full bg-black px-6 py-3 text-white"
                     >
                         Back to Services
@@ -75,7 +97,7 @@ try {
             <div className="mx-auto max-w-2xl">
 
                 <button
-                    onClick={() => navigate("/services")}
+                    onClick={() => navigate(`/services?ref=${referralCode}`)}
                     className="mb-8 text-sm underline"
                 >
                     ← Back to Services
