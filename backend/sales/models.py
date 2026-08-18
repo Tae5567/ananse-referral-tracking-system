@@ -113,3 +113,81 @@ class Order(TimestampedModel):
     @property
     def is_matched(self):
         return self.matched_lead_id is not None
+
+
+class CustomSale(TimestampedModel):
+    """
+    Manually recorded sale for services paid outside
+    the Ananse Center for Design website.
+    """
+
+    PAYMENT_METHODS = [
+        ("bank_transfer", "Bank Transfer"),
+        ("onsite", "Onsite"),
+        ("other", "Other"),
+    ]
+
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("paid", "Paid"),
+        ("cancelled", "Cancelled"),
+    ]
+
+    lead = models.ForeignKey(
+        Lead,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="custom_sales",
+    )
+
+    customer_first_name = models.CharField(
+        max_length=100,
+    )
+
+    customer_last_name = models.CharField(
+        max_length=100,
+        blank=True,
+    )
+
+    customer_email = models.EmailField(
+        blank=True,
+    )
+
+    customer_phone = models.CharField(
+        max_length=30,
+        blank=True,
+    )
+
+    service_name = models.CharField(
+        max_length=255,
+    )
+
+    amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+    )
+
+    payment_method = models.CharField(
+        max_length=30,
+        choices=PAYMENT_METHODS,
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="paid",
+    )
+
+    notes = models.TextField(
+        blank=True,
+    )
+
+    sale_date = models.DateTimeField()
+
+    def __str__(self):
+        return (
+            f"{self.customer_first_name} "
+            f"{self.customer_last_name} - "
+            f"{self.service_name}"
+        )

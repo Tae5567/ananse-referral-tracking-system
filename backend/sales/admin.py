@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Order
+from .models import Order, CustomSale
 
 
 @admin.register(Order)
@@ -35,4 +35,31 @@ class OrderAdmin(admin.ModelAdmin):
 
     readonly_fields = (
         "imported_at",
+    )
+
+
+@admin.register(CustomSale)
+class CustomSaleAdmin(admin.ModelAdmin):
+    list_display = (
+        "customer_first_name",
+        "customer_last_name",
+        "service_name",
+        "amount",
+        "payment_method",
+        "status",
+        "sale_date",
+        "lead",
+    )
+
+    list_filter = (
+        "payment_method",
+        "status",
+    )
+
+    search_fields = (
+        "customer_first_name",
+        "customer_last_name",
+        "customer_email",
+        "customer_phone",
+        "service_name",
     )
