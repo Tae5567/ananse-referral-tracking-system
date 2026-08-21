@@ -26,46 +26,48 @@ function InquiryPage() {
 
         setLoading(true);
 try {
-    await api.get("csrf/");
+        const csrfResponse = await api.get("csrf/");
 
-    const csrfToken = document.cookie
-        .split("; ")
-        .find((row) => row.startsWith("csrftoken="))
-        ?.split("=")[1];
+        const csrfToken = csrfResponse.data.csrfToken;
 
-    console.log("CSRF token:", csrfToken);
-
-    await api.post(
-        "leads/inquiry/",
-        {
-            referral_code: referralCode,
-            service_name: serviceName,
-            inquiry_message: message,
-        },
-        {
-            headers: {
-                "X-CSRFToken": csrfToken,
+        await api.post(
+            "leads/inquiry/",
+            {
+                referral_code: "camille",
+                service_name: serviceName,
+                inquiry_message: message,
             },
+            {
+                headers: {
+                    "X-CSRFToken": csrfToken,
+                },
+            }
+        );
+
+        setSubmitted(true);
+
+    } catch (error) {
+
+        console.error(
+            "Inquiry submission error:",
+            error
+        );
+
+        if (error.response) {
+            console.error(
+                "Response:",
+                error.response.data
+            );
         }
-    );
 
-    setSubmitted(true);
+        alert(
+            "Something went wrong. Please try again."
+        );
 
-} catch (error) {
-    console.error("Inquiry submission error:", error);
-
-    if (error.response) {
-        console.error("Status:", error.response.status);
-        console.error("Response:", error.response.data);
+    } finally {
+        setLoading(false);
     }
-
-    alert("Something went wrong. Please try again.");
-
-} finally {
-    setLoading(false);
 };
-    }
-
     if (submitted) {
         return (
             <div className="flex min-h-screen items-center justify-center px-6">
