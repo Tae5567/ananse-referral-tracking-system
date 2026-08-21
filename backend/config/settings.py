@@ -94,6 +94,9 @@ DATABASES = {
 
 REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "common.exceptions.custom_exception_handler",
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+    ],
 }
 
 CORS_ALLOWED_ORIGINS = [

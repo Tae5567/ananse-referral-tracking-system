@@ -18,10 +18,16 @@ from django.contrib import admin
 from django.urls import path
 from django.urls import include
 from common.views import csrf
+from common.auth_views import login_view, logout_view, me_view
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/referrals/', include('referrals.urls'), ),
     path('api/leads/', include('leads.urls'), ),
+    path("api/sales/", include("sales.urls")),
     path("api/csrf/", csrf),
+    path("api/dashboard/", include("dashboard.urls")),
+    path("api/auth/login/", login_view),
+    path("api/auth/logout/", logout_view),
+    path("api/auth/me/", me_view),
 ]
