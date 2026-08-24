@@ -49,14 +49,18 @@ class DashboardView(APIView):
             matched_lead__referral=referral
         )
 
+        paid_orders = orders.filter(
+            status="paid"
+        )
+
         website_revenue = (
-            orders.aggregate(
+            paid_orders.aggregate(
                 total=Sum("total_amount")
             )["total"]
             or Decimal("0")
         )
 
-        website_orders = orders.count()
+        website_orders = paid_orders.count()
 
         # -----------------------------
         # Custom sales
@@ -94,7 +98,7 @@ class DashboardView(APIView):
         # one website order or custom sale.
 
         lead_ids_with_orders = set(
-            orders
+            paid_orders
             .exclude(matched_lead_id=None)
             .values_list("matched_lead_id", flat=True)
         )
@@ -171,6 +175,58 @@ class DashboardView(APIView):
             reverse=True,
         )
 
+        inquiry_queryset = (
+            referral.leads
+            .filter(
+                interest="custom_service",
+            )
+            .exclude(
+                status="converted",
+            )
+            .order_by("-created_at")
+        )
+
+        inquiries = []
+
+        for lead in inquiry_queryset[:20]:
+            inquiries.append({
+                "id": lead.id,
+                "first_name": lead.first_name,
+                "last_name": lead.last_name,
+                "email": lead.email,
+                "phone": lead.phone,
+                "service_name": lead.service_name,
+                "inquiry_message": lead.inquiry_message,
+                "status": lead.status,
+                "status_display": lead.get_status_display(),
+                "created_at": lead.created_at,
+            })
+
+
+        order_data = []
+
+        for order in orders.order_by(
+            "-purchase_date",
+            "-created_at",
+        )[:50]:
+            order_data.append({
+                "id": order.id,
+                "external_id": order.external_id,
+                "reference": order.reference,
+                "customer_name": (
+                    f"{order.customer_first_name} "
+                    f"{order.customer_last_name}"
+                ).strip(),
+                "email": order.customer_email,
+                "phone": order.customer_phone,
+                "service": order.product_name,
+                "amount": str(order.total_amount),
+                "status": order.status,
+                "date": order.purchase_date or order.created_at,
+                "match_method": order.match_method,
+            })
+
+
         return Response({
             "success": True,
 
@@ -193,4 +249,6 @@ class DashboardView(APIView):
             },
 
             "recent_activity": recent_orders[:10],
+            "orders": order_data,
+            "inquiries": inquiries,
         })

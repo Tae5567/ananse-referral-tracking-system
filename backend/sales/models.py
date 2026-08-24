@@ -10,6 +10,14 @@ class Order(TimestampedModel):
     / Fashion Hub transaction export.
     """
 
+    PAYMENT_STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("paid", "Paid"),
+        ("failed", "Payment Failed"),
+        ("cancelled", "Cancelled"),
+        ("refunded", "Refunded"),
+    ]
+
     external_id = models.CharField(
         max_length=100,
         unique=True,
@@ -83,6 +91,14 @@ class Order(TimestampedModel):
     purchase_date = models.DateTimeField(
         null=True,
         blank=True,
+    )
+
+
+
+    payment_status = models.CharField(
+        max_length=20,
+        choices=PAYMENT_STATUS_CHOICES,
+        default="pending",
     )
 
     matched_lead = models.ForeignKey(

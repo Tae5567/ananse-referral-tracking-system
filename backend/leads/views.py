@@ -3,6 +3,7 @@ from django.db.models import Q
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
 
 from referrals.models import Referral
 from referrals.models import Visitor
@@ -187,3 +188,91 @@ class InquiryCreateAPIView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class InquiryListAPIView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+
+        inquiries = (
+            Lead.objects
+            .filter(
+                interest=Lead.Interest.CUSTOM_SERVICE,
+            )
+            .select_related("referral")
+            .order_by("-created_at")
+        )
+
+        data = []
+
+        for lead in inquiries:
+            data.append({
+                "id": lead.id,
+                "first_name": lead.first_name,
+                "last_name": lead.last_name,
+                "email": lead.email,
+                "phone": lead.phone,
+                "service_name": lead.service_name,
+                "inquiry_message": lead.inquiry_message,
+                "status": lead.status,
+                "status_display": lead.get_status_display(),
+                "created_at": lead.created_at,
+                "referral": lead.referral.code,
+            })
+
+        return Response({
+            "success": True,
+            "inquiries": data,
+        })
+
+
+class InquiryStatusUpdateAPIView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    VALID_STATUSES = {
+        Lead.Status.NEW,
+        Lead.Status.CONTACTED,
+        Lead.Status.CONVERTED,
+    }
+
+    def patch(self, request, inquiry_id):
+
+        try:
+            lead = Lead.objects.get(
+                id=inquiry_id,
+                interest=Lead.Interest.CUSTOM_SERVICE,
+            )
+        except Lead.DoesNotExist:
+            return Response(
+                {
+                    "success": False,
+                    "error": "Inquiry not found.",
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        new_status = request.data.get("status")
+
+        if new_status not in self.VALID_STATUSES:
+            return Response(
+                {
+                    "success": False,
+                    "error": "Invalid inquiry status.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        lead.status = new_status
+        lead.save(update_fields=["status", "updated_at"])
+
+        return Response({
+            "success": True,
+            "inquiry": {
+                "id": lead.id,
+                "status": lead.status,
+                "status_display": lead.get_status_display(),
+            },
+        })
