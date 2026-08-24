@@ -61,7 +61,7 @@ const services = [
         description:
             "Flexible spaces for events, activations and creative gatherings.",
         category: "Events",
-        paymentUrl: "https://alpha.ananse.com/fashionhub/lagos-nigeria/booking/auditorium-space-rentals",
+        paymentUrl: "https://alpha.ananse.com/fashionhub/lagos-nigeria/catalogue/space-rental",
     },
     {
         id: 9,

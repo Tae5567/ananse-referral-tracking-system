@@ -1,6 +1,8 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
+import DashboardLayout from "../components/DashboardLayout";
 
 function CustomSalePage() {
     const navigate = useNavigate();
@@ -85,7 +87,7 @@ function CustomSalePage() {
                     </p>
 
                     <button
-                        onClick={() => navigate("/")}
+                        onClick={() => navigate("/dashboard")}
                         className="mt-8 rounded-full bg-black px-6 py-3 text-white"
                     >
                         Back to Dashboard
@@ -96,10 +98,12 @@ function CustomSalePage() {
         );
     }
 
+
     return (
+        <DashboardLayout>
         <div className="min-h-screen bg-[#FAF8F5] px-6 py-8">
 
-            <div className="mx-auto max-w-xl">
+            <div className="mx-auto max-w-3xl px-6 py-10">
 
                 <button
                     onClick={() => navigate(-1)}
@@ -108,11 +112,11 @@ function CustomSalePage() {
                     ← Back
                 </button>
 
-                <h1 className="text-3xl font-semibold text-gray-900">
+                <h1 className="text-3xl font-semibold">
                     Record a Custom Sale
                 </h1>
 
-                <p className="mt-3 text-gray-600">
+                <p className="mt-3 text-gray-500">
                     Record services or bookings paid outside the
                     Ananse Center for Design website.
                 </p>
@@ -322,6 +326,8 @@ function CustomSalePage() {
             </div>
 
         </div>
+        </DashboardLayout>
+
     );
 }
 

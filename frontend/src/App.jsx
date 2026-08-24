@@ -5,6 +5,7 @@ import ServicesPage from "./pages/ServicesPage";
 import InquiryPage from "./pages/InquiryPage";
 import CustomSalePage from "./pages/CustomSalePage";
 import DashboardPage from "./pages/DashboardPage";
+import InquiriesPage from "./pages/InquiriesPage";
 import ThankYou from "./pages/ThankYou";
 import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/LoginPage";
@@ -18,8 +19,9 @@ function App() {
                 <Route path="/r/:code" element={<ReferralLanding />} />
                 <Route path="/services" element={<ServicesPage />} />
                 <Route path="/inquiry" element={<InquiryPage />} />
-                <Route path="/custom-sale" element={<CustomSalePage />} />
+                <Route path="/dashboard/custom-sales" element={<ProtectedRoute><CustomSalePage /></ProtectedRoute>} />
                 <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /> </ProtectedRoute>} />
+                <Route path="/dashboard/inquiries" element={<ProtectedRoute><InquiriesPage /> </ProtectedRoute>} />
                 <Route path="/thank-you" element={<ThankYou />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="*" element={<NotFound />} />

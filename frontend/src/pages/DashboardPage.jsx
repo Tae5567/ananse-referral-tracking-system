@@ -1,52 +1,108 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-
 import api from "../services/api";
 import logo from "../assets/logo.jpg";
+import DashboardLayout from "../components/DashboardLayout";
+
+
+const formatCurrency = (value) => {
+    return new Intl.NumberFormat("en-NG", {
+        style: "currency",
+        currency: "NGN",
+        maximumFractionDigits: 0,
+    }).format(Number(value || 0));
+};
+
+
+const formatDate = (value) => {
+    if (!value) return "—";
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return "—";
+    }
+
+    return date.toLocaleDateString("en-NG", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+    });
+};
 
 
 function DashboardPage() {
 
-    const navigate = useNavigate();
+    const getCsrfToken = async () => {
+    const response = await api.get("csrf/");
+    return response.data.csrfToken;
+};
 
-    const [dashboard, setDashboard] = useState(null);
+    const [data, setData] = useState(null);
+
     const [loading, setLoading] = useState(true);
+
     const [error, setError] = useState("");
-    const [copied, setCopied] = useState(false);
+
+    const [uploading, setUploading] = useState(false);
+
+    const [uploadMessage, setUploadMessage] = useState("");
+
+    const [updatingOrder, setUpdatingOrder] = useState(null);
+
+    const [updatingInquiry, setUpdatingInquiry] = useState(null);
+
+
+    const loadDashboard = async () => {
+
+        try {
+
+            const response = await api.get(
+                "dashboard/"
+            );
+
+            setData(response.data);
+
+        } catch (err) {
+
+            console.error(
+                "Dashboard error:",
+                err
+            );
+
+            if (err.response?.status === 401) {
+                window.location.href = "/login";
+                return;
+            }
+
+            setError(
+                "Unable to load the dashboard."
+            );
+
+        } finally {
+
+            setLoading(false);
+
+        }
+    };
+
 
     useEffect(() => {
 
-        async function loadDashboard() {
-
-            try {
-
-                const response = await api.get("dashboard/");
-
-                setDashboard(response.data);
-
-            } catch (error) {
-
-                console.error("Dashboard error:", error);
-
-                if (error.response?.status === 401) {
-                    navigate("/login");
-                    return;
-                }
-
-                setError(
-                    "Unable to load the dashboard. Please try again."
-                );
-
-            } finally {
-
-                setLoading(false);
-
-            }
-        }
-
         loadDashboard();
 
-    }, [navigate]);
+    }, []);
+
+
+    const copyReferralLink = async () => {
+
+        const link =
+            `${window.location.origin}/r/${data.referral.code}`;
+
+        await navigator.clipboard.writeText(link);
+
+        alert("Referral link copied.");
+
+    };
 
 
     const logout = async () => {
@@ -55,159 +111,322 @@ function DashboardPage() {
 
             await api.post("auth/logout/");
 
-        } catch (error) {
+        } catch (err) {
 
-            console.error("Logout error:", error);
+            console.error(
+                "Logout error:",
+                err
+            );
 
         } finally {
 
-            navigate("/login");
+            window.location.href = "/login";
+        }
+    };
+
+
+    const importCSV = async (event) => {
+
+        const file =
+            event.target.files?.[0];
+
+        if (!file) return;
+
+        setUploading(true);
+
+        setUploadMessage("");
+
+        const formData = new FormData();
+
+        formData.append(
+            "file",
+            file
+        );
+
+        try {
+
+            const csrfToken = await getCsrfToken();
+
+            const response = await api.post(
+                "sales/orders/import/",
+                formData,
+                {
+                    headers: {
+                        "X-CSRFToken": csrfToken,
+                    },
+                }
+            );
+
+            setUploadMessage(
+                response.data.message ||
+                "Transactions imported."
+            );
+
+            await loadDashboard();
+
+        } catch (err) {
+
+            console.error(
+                "CSV import error:",
+                err
+            );
+
+            setUploadMessage(
+                err.response?.data?.error ||
+                "CSV import failed."
+            );
+
+        } finally {
+
+            setUploading(false);
+
+            event.target.value = "";
 
         }
     };
 
 
-    const copyReferralLink = async () => {
+    const updateOrderStatus = async (
+        orderId,
+        newStatus
+    ) => {
 
-        const link = `${window.location.origin}/r/${dashboard.referral.code}`;
+        setUpdatingOrder(orderId);
 
         try {
 
-            await navigator.clipboard.writeText(link);
+            const csrfToken = await getCsrfToken();
 
-            setCopied(true);
+            await api.patch(
+                `sales/orders/${orderId}/status/`,
+                {
+                    status: newStatus,
+                },
+                {
+                    headers: {
+                        "X-CSRFToken": csrfToken,
+                    },
+                }
+            );
 
-            setTimeout(() => {
-                setCopied(false);
-            }, 2000);
+            await loadDashboard();
 
-        } catch (error) {
+        } catch (err) {
 
-            console.error("Copy failed:", error);
+            console.error(
+                "Order status error:",
+                err
+            );
+
+            alert(
+                err.response?.data?.error ||
+                "Unable to update order."
+            );
+
+        } finally {
+
+            setUpdatingOrder(null);
+
+        }
+    };
+
+
+    const updateInquiryStatus = async (
+        inquiryId,
+        newStatus
+    ) => {
+
+        setUpdatingInquiry(inquiryId);
+
+        try {
+            const csrfToken = await getCsrfToken();
+
+            await api.patch(
+                `leads/inquiries/${inquiryId}/status/`,
+                {
+                    status: newStatus,
+                },
+                {
+                    headers: {
+                        "X-CSRFToken": csrfToken,
+                    },
+                }
+            );
+
+            await loadDashboard();
+
+        } catch (err) {
+
+            console.error(
+                "Inquiry status error:",
+                err
+            );
+
+            alert(
+                err.response?.data?.error ||
+                "Unable to update inquiry."
+            );
+
+        } finally {
+
+            setUpdatingInquiry(null);
 
         }
     };
 
 
     if (loading) {
+
         return (
-            <div className="min-h-screen flex items-center justify-center bg-[#FAF8F5]">
-                <p className="text-gray-500">
-                    Loading dashboard...
-                </p>
+            <div className="min-h-screen flex items-center justify-center">
+                Loading dashboard...
             </div>
         );
+
     }
 
 
     if (error) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-[#FAF8F5] px-6">
-                <div className="text-center">
 
+        return (
+            <div className="min-h-screen flex items-center justify-center px-6">
+                <div className="text-center">
                     <p className="text-red-600">
                         {error}
                     </p>
 
                     <button
-                        onClick={() => window.location.reload()}
+                        onClick={loadDashboard}
                         className="mt-4 rounded-full bg-black px-6 py-3 text-white"
                     >
                         Try Again
                     </button>
-
                 </div>
             </div>
         );
+
     }
 
 
-    const stats = dashboard.stats;
+    if (!data) return null;
+
+
+    const stats = data.stats || {};
+
+    const orders = data.orders || [];
+
+    const inquiries =
+        data.inquiries || [];
 
 
     const referralLink =
-        `${window.location.origin}/r/${dashboard.referral.code}`;
+        `${window.location.origin}/r/${data.referral.code}`;
 
 
     return (
+        <DashboardLayout>
+
         <div className="min-h-screen bg-[#FAF8F5]">
 
-            {/* Header */}
+            {/* HEADER */}
 
-            <header className="border-b border-gray-200 bg-white">
+            <header className="border-b bg-white">
 
                 <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
 
                     <img
                         src={logo}
-                        alt="Ananse"
-                        className="h-10 w-auto object-contain"
+                        alt="Ananse Center for Design"
+                        className="h-12 w-auto object-contain"
                     />
 
-                    <button
-                        onClick={logout}
-                        className="rounded-full border border-gray-300 px-5 py-2 text-sm font-medium transition hover:bg-gray-100"
-                    >
-                        Logout
-                    </button>
+                    <div className="flex items-center gap-4">
 
-                </div>
+                        <div className="hidden text-right sm:block">
+                            <p className="text-sm text-gray-500">
+                                Referral account
+                            </p>
 
-            </header>
-
-
-            {/* Main */}
-
-            <main className="mx-auto max-w-7xl px-6 py-10">
-
-                {/* Welcome */}
-
-                <div>
-
-                    <p className="text-sm uppercase tracking-widest text-[#B68D40] font-semibold">
-                        Referral Dashboard
-                    </p>
-
-                    <h1 className="mt-2 text-3xl font-semibold text-gray-900 sm:text-4xl">
-                        Welcome, {dashboard.referral.name}
-                    </h1>
-
-                    <p className="mt-2 text-gray-600">
-                        Here's how your referrals are performing.
-                    </p>
-
-                </div>
-
-
-                {/* Referral Link */}
-
-                <div className="mt-8 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-
-                    <p className="text-sm font-medium text-gray-500">
-                        Your referral link
-                    </p>
-
-                    <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-
-                        <div className="flex-1 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-700 break-all">
-                            {referralLink}
+                            <p className="font-semibold text-gray-900">
+                                {data.referral.name}
+                            </p>
                         </div>
 
                         <button
-                            onClick={copyReferralLink}
-                            className="rounded-xl bg-black px-6 py-3 text-sm font-medium text-white transition hover:bg-gray-800"
+                            onClick={logout}
+                            className="rounded-full border border-gray-300 px-5 py-2 text-sm font-medium hover:bg-gray-50"
                         >
-                            {copied ? "Copied!" : "Copy Link"}
+                            Logout
                         </button>
 
                     </div>
 
                 </div>
 
+            </header>
 
-                {/* Stats */}
 
-                <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <main className="mx-auto max-w-7xl px-6 py-10">
+
+
+                {/* TITLE */}
+
+                <div className="mb-8">
+
+                    <p className="text-sm uppercase tracking-widest text-[#B68D40]">
+                        Referral Dashboard
+                    </p>
+
+                    <h1 className="mt-2 text-3xl font-semibold text-gray-900">
+                        Welcome, {data.referral.name}
+                    </h1>
+
+                </div>
+
+
+                {/* REFERRAL LINK */}
+
+                <section className="mb-8 rounded-2xl bg-white p-6 shadow-sm">
+
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+
+                        <div>
+
+                            <h2 className="font-semibold text-gray-900">
+                                Your referral link
+                            </h2>
+
+                            <p className="mt-1 text-sm text-gray-500">
+                                Share this link with customers you refer.
+                            </p>
+
+                        </div>
+
+                        <div className="flex flex-col gap-2 sm:flex-row">
+
+                            <input
+                                readOnly
+                                value={referralLink}
+                                className="w-full rounded-xl border bg-gray-50 px-4 py-3 text-sm lg:w-96"
+                            />
+
+                            <button
+                                onClick={copyReferralLink}
+                                className="rounded-xl bg-black px-6 py-3 text-sm font-medium text-white"
+                            >
+                                Copy
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+
+                {/* STATS */}
+
+                <section className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
 
                     <StatCard
                         label="Clicks"
@@ -225,17 +444,12 @@ function DashboardPage() {
                     />
 
                     <StatCard
-                        label="Conversion Rate"
-                        value={`${stats.conversion_rate}%`}
-                    />
-
-                    <StatCard
-                        label="Website Orders"
+                        label="Paid Website Orders"
                         value={stats.website_orders}
                     />
 
                     <StatCard
-                        label="Custom Sales"
+                        label="Paid Custom Sales"
                         value={stats.custom_sales}
                     />
 
@@ -245,32 +459,40 @@ function DashboardPage() {
                     />
 
                     <StatCard
-                        label="Total Revenue"
-                        value={`₦${Number(stats.total_revenue).toLocaleString()}`}
-                        large
+                        label="Visitor Conversion Rate"
+                        value={`${stats.conversion_rate}%`}
                     />
 
-                </div>
+                    <StatCard
+                        label="Total Revenue"
+                        value={formatCurrency(stats.total_revenue)}
+                    />
+
+                </section>
 
 
-                {/* Revenue Breakdown */}
+                {/* REVENUE */}
 
-                <section className="mt-8">
+                <section className="mt-10">
 
-                    <h2 className="text-xl font-semibold text-gray-900">
+                    <h2 className="mb-5 text-2xl font-semibold">
                         Revenue
                     </h2>
 
-                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-5 md:grid-cols-2">
 
                         <RevenueCard
-                            title="Website Revenue"
-                            amount={stats.website_revenue}
+                            label="Website Revenue"
+                            value={formatCurrency(
+                                stats.website_revenue
+                            )}
                         />
 
                         <RevenueCard
-                            title="Custom Sales Revenue"
-                            amount={stats.custom_revenue}
+                            label="Custom Sales Revenue"
+                            value={formatCurrency(
+                                stats.custom_revenue
+                            )}
                         />
 
                     </div>
@@ -278,121 +500,300 @@ function DashboardPage() {
                 </section>
 
 
-                {/* Recent Activity */}
+                {/* CSV IMPORT */}
 
-                <section className="mt-10">
+                <section className="mt-10 rounded-2xl bg-white p-6 shadow-sm">
 
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
 
                         <div>
-                            <h2 className="text-xl font-semibold text-gray-900">
-                                Recent Activity
+
+                            <h2 className="text-xl font-semibold">
+                                Daily Transactions
                             </h2>
 
                             <p className="mt-1 text-sm text-gray-500">
-                                Recent purchases and manually recorded sales.
+                                Upload the latest transaction CSV.
+                                Existing transactions will not be duplicated.
                             </p>
+
+                            {uploadMessage && (
+                                <p className="mt-3 text-sm font-medium text-green-700">
+                                    {uploadMessage}
+                                </p>
+                            )}
+
+                        </div>
+
+                        <label className="cursor-pointer rounded-xl bg-black px-6 py-3 text-center text-sm font-medium text-white">
+
+                            {uploading
+                                ? "Importing..."
+                                : "Upload CSV"
+                            }
+
+                            <input
+                                type="file"
+                                accept=".csv"
+                                onChange={importCSV}
+                                disabled={uploading}
+                                className="hidden"
+                            />
+
+                        </label>
+
+                    </div>
+
+                </section>
+
+
+                {/* WEBSITE ORDERS */}
+
+                <section className="mt-10">
+
+                    <div className="mb-5">
+
+                        <h2 className="text-2xl font-semibold">
+                            Website Orders
+                        </h2>
+
+                        <p className="mt-1 text-sm text-gray-500">
+                            Verify payments with Accounts before marking an order as paid.
+                        </p>
+
+                    </div>
+
+                    <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
+
+                        <div className="overflow-x-auto">
+
+                            <table className="w-full min-w-[850px]">
+
+                                <thead className="border-b bg-gray-50">
+
+                                    <tr>
+
+                                        <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                            Customer
+                                        </th>
+
+                                        <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                            Service
+                                        </th>
+
+                                        <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                            Amount
+                                        </th>
+
+                                        <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                            Status
+                                        </th>
+
+                                        <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                            Date
+                                        </th>
+
+                                    </tr>
+
+                                </thead>
+
+                                <tbody className="divide-y">
+
+                                    {orders.length === 0 ? (
+
+                                        <tr>
+
+                                            <td
+                                                colSpan="5"
+                                                className="px-6 py-10 text-center text-gray-500"
+                                            >
+                                                No website orders yet.
+                                            </td>
+
+                                        </tr>
+
+                                    ) : (
+
+                                        orders.map((order) => (
+
+                                            <tr key={order.id}>
+
+                                                <td className="px-6 py-5">
+
+                                                    <p className="font-medium text-gray-900">
+                                                        {order.customer_name}
+                                                    </p>
+
+                                                    <p className="mt-1 text-xs text-gray-500">
+                                                        {order.email}
+                                                    </p>
+
+                                                </td>
+
+                                                <td className="px-6 py-5 text-sm text-gray-600">
+                                                    {order.service || "—"}
+                                                </td>
+
+                                                <td className="px-6 py-5 font-medium">
+                                                    {formatCurrency(
+                                                        order.amount
+                                                    )}
+                                                </td>
+
+                                                <td className="px-6 py-5">
+
+                                                    <select
+                                                        value={
+                                                            order.status || "pending"
+                                                        }
+                                                        disabled={
+                                                            updatingOrder === order.id
+                                                        }
+                                                        onChange={(e) =>
+                                                            updateOrderStatus(
+                                                                order.id,
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                        className="rounded-lg border px-3 py-2 text-sm"
+                                                    >
+
+                                                        <option value="pending">
+                                                            Pending
+                                                        </option>
+
+                                                        <option value="paid">
+                                                            Paid
+                                                        </option>
+
+                                                        <option value="not_paid">
+                                                            Not Paid
+                                                        </option>
+
+                                                    </select>
+
+                                                </td>
+
+                                                <td className="px-6 py-5 text-sm text-gray-500">
+                                                    {formatDate(order.date)}
+                                                </td>
+
+                                            </tr>
+
+                                        ))
+
+                                    )}
+
+                                </tbody>
+
+                            </table>
+
                         </div>
 
                     </div>
 
+                </section>
 
-                    <div className="mt-4 overflow-hidden rounded-2xl border border-gray-200 bg-white">
 
-                        {dashboard.recent_activity.length === 0 ? (
+                {/* RECENT ACTIVITY */}
 
-                            <div className="px-6 py-10 text-center text-gray-500">
-                                No activity yet.
-                            </div>
+                <section className="mt-10 pb-16">
 
-                        ) : (
+                    <h2 className="text-2xl font-semibold">
+                        Recent Activity
+                    </h2>
 
-                            <div className="overflow-x-auto">
+                    <p className="mt-1 mb-5 text-sm text-gray-500">
+                        Recent purchases and manually recorded sales.
+                    </p>
 
-                                <table className="w-full text-left text-sm">
+                    <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
 
-                                    <thead className="border-b bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                        <div className="overflow-x-auto">
 
-                                        <tr>
+                            <table className="w-full min-w-[800px]">
 
-                                            <th className="px-6 py-4">
-                                                Customer
-                                            </th>
+                                <thead className="border-b bg-gray-50">
 
-                                            <th className="px-6 py-4">
-                                                Service
-                                            </th>
+                                    <tr>
 
-                                            <th className="px-6 py-4">
-                                                Type
-                                            </th>
+                                        <th className="px-6 py-4 text-left text-xs uppercase tracking-wide text-gray-500">
+                                            Customer
+                                        </th>
 
-                                            <th className="px-6 py-4">
-                                                Amount
-                                            </th>
+                                        <th className="px-6 py-4 text-left text-xs uppercase tracking-wide text-gray-500">
+                                            Service
+                                        </th>
 
-                                            <th className="px-6 py-4">
-                                                Status
-                                            </th>
+                                        <th className="px-6 py-4 text-left text-xs uppercase tracking-wide text-gray-500">
+                                            Type
+                                        </th>
 
-                                            <th className="px-6 py-4">
-                                                Date
-                                            </th>
+                                        <th className="px-6 py-4 text-left text-xs uppercase tracking-wide text-gray-500">
+                                            Amount
+                                        </th>
 
-                                        </tr>
+                                        <th className="px-6 py-4 text-left text-xs uppercase tracking-wide text-gray-500">
+                                            Status
+                                        </th>
 
-                                    </thead>
+                                        <th className="px-6 py-4 text-left text-xs uppercase tracking-wide text-gray-500">
+                                            Date
+                                        </th>
 
-                                    <tbody className="divide-y">
+                                    </tr>
 
-                                        {dashboard.recent_activity.map(
-                                            (activity, index) => (
+                                </thead>
 
-                                                <tr
-                                                    key={`${activity.type}-${activity.id}-${index}`}
-                                                    className="hover:bg-gray-50"
-                                                >
+                                <tbody className="divide-y">
 
-                                                    <td className="whitespace-nowrap px-6 py-4 font-medium text-gray-900">
-                                                        {activity.customer_name || "Unknown"}
-                                                    </td>
+                                    {(data.recent_activity || []).map(
+                                        (activity, index) => (
 
-                                                    <td className="max-w-xs px-6 py-4 text-gray-600">
-                                                        {activity.service || "—"}
-                                                    </td>
+                                            <tr key={`${activity.type}-${activity.id}-${index}`}>
 
-                                                    <td className="px-6 py-4">
+                                                <td className="px-6 py-5 font-medium">
+                                                    {activity.customer_name}
+                                                </td>
 
-                                                        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium">
-                                                            {activity.type}
-                                                        </span>
+                                                <td className="px-6 py-5 text-sm text-gray-600">
+                                                    {activity.service}
+                                                </td>
 
-                                                    </td>
+                                                <td className="px-6 py-5">
 
-                                                    <td className="whitespace-nowrap px-6 py-4 font-medium">
-                                                        ₦{Number(activity.amount).toLocaleString()}
-                                                    </td>
+                                                    <span className="rounded-full bg-gray-100 px-3 py-2 text-xs">
+                                                        {activity.type}
+                                                    </span>
 
-                                                    <td className="px-6 py-4 text-gray-600">
-                                                        {activity.status || "—"}
-                                                    </td>
+                                                </td>
 
-                                                    <td className="whitespace-nowrap px-6 py-4 text-gray-500">
-                                                        {formatDate(activity.date)}
-                                                    </td>
+                                                <td className="px-6 py-5 font-medium">
+                                                    {formatCurrency(
+                                                        activity.amount
+                                                    )}
+                                                </td>
 
-                                                </tr>
+                                                <td className="px-6 py-5 text-sm">
+                                                    {activity.status}
+                                                </td>
 
-                                            )
-                                        )}
+                                                <td className="px-6 py-5 text-sm text-gray-500">
+                                                    {formatDate(
+                                                        activity.date
+                                                    )}
+                                                </td>
 
-                                    </tbody>
+                                            </tr>
 
-                                </table>
+                                        )
+                                    )}
 
-                            </div>
+                                </tbody>
 
-                        )}
+                            </table>
+
+                        </div>
 
                     </div>
 
@@ -401,26 +802,25 @@ function DashboardPage() {
             </main>
 
         </div>
+        </DashboardLayout>
     );
 }
 
 
-function StatCard({ label, value, large = false }) {
+function StatCard({
+    label,
+    value,
+}) {
 
     return (
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+
+        <div className="rounded-2xl bg-white p-6 text-center shadow-sm">
 
             <p className="text-sm text-gray-500">
                 {label}
             </p>
 
-            <p
-                className={`mt-2 font-semibold text-gray-900 ${
-                    large
-                        ? "text-2xl"
-                        : "text-3xl"
-                }`}
-            >
+            <p className="mt-2 text-3xl font-semibold text-gray-900">
                 {value}
             </p>
 
@@ -429,43 +829,24 @@ function StatCard({ label, value, large = false }) {
 }
 
 
-function RevenueCard({ title, amount }) {
+function RevenueCard({
+    label,
+    value,
+}) {
 
     return (
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+
+        <div className="rounded-2xl bg-white p-7 text-center shadow-sm">
 
             <p className="text-sm text-gray-500">
-                {title}
+                {label}
             </p>
 
-            <p className="mt-2 text-2xl font-semibold text-gray-900">
-                ₦{Number(amount).toLocaleString()}
+            <p className="mt-2 text-3xl font-semibold">
+                {value}
             </p>
 
         </div>
-    );
-}
-
-
-function formatDate(date) {
-
-    if (!date) {
-        return "—";
-    }
-
-    const parsed = new Date(date);
-
-    if (Number.isNaN(parsed.getTime())) {
-        return "—";
-    }
-
-    return parsed.toLocaleDateString(
-        "en-NG",
-        {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-        }
     );
 }
 
