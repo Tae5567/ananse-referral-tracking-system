@@ -39,7 +39,7 @@ function LeadForm({ referralCode }) {
 
     // Submit lead with CSRF token
     await api.post(
-        "leads/",
+        "/api/leads/",
         {
             ...form,
             referral_code: referralCode,
