@@ -32,6 +32,9 @@ services:
 
     container_name: ananse_backend
 
+    environment:
+      - DATABASE_URL=postgresql://referrals:referrals@postgres:5432/referrals
+
     command: >
 
       sh -c "

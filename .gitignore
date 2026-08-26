@@ -32,3 +32,6 @@ postgres_data/
 
 # Windows
 Thumbs.db
+
+
+backend/config/settings.py
