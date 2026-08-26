@@ -20,3 +20,5 @@ phonenumbers==9.0.12
 Pillow==11.3.0
 
 whitenoise
+
+gunicorn
