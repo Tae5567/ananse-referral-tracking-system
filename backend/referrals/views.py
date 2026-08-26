@@ -82,14 +82,11 @@ class ReferralLandingAPIView(APIView):
 
         response.set_cookie(
             self.COOKIE_NAME,
-
             str(visitor.visitor_id),
-
             max_age=60 * 60 * 24 * 365,
-
             httponly=True,
-
-            samesite="Lax",
+            samesite="None",
+            secure=True,
         )
 
         return response
