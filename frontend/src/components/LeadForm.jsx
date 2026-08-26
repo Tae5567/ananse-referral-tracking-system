@@ -33,7 +33,7 @@ function LeadForm({ referralCode }) {
 
         try {
     // Get CSRF token from Django
-    const csrfResponse = await api.get("csrf/");
+    const csrfResponse = await api.get("/api/csrf/");
 
     const csrfToken = csrfResponse.data.csrfToken;
 
