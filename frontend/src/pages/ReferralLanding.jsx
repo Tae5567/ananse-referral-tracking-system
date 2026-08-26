@@ -18,11 +18,11 @@ function ReferralLanding() {
             try {
                 console.log("Getting CSRF cookie...");
 
-                await api.get("csrf/");
+                await api.get("/api/csrf/");
 
                 console.log("Getting referral:", code);
 
-                const res = await api.get(`referrals/${code}/`);
+                const res = await api.get(`/api/referrals/${code}/`);
 
                 console.log("Referral response:", res.data);
 
