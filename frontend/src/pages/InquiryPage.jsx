@@ -26,12 +26,12 @@ function InquiryPage() {
 
         setLoading(true);
 try {
-        const csrfResponse = await api.get("csrf/");
+        const csrfResponse = await api.get("/api/csrf/");
 
         const csrfToken = csrfResponse.data.csrfToken;
 
         await api.post(
-            "leads/inquiry/",
+            "/api/leads/inquiry/",
             {
                 referral_code: "camille",
                 service_name: serviceName,

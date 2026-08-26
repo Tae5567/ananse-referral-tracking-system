@@ -7,7 +7,7 @@ function DashboardLayout({ children }) {
 
     const logout = async () => {
         try {
-            await api.post("auth/logout/");
+            await api.post("/api/auth/logout/");
         } catch (error) {
             console.error("Logout error:", error);
         } finally {

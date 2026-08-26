@@ -8,7 +8,7 @@ function InquiriesPage() {
 
     const loadInquiries = async () => {
         try {
-            const response = await api.get("dashboard/");
+            const response = await api.get("/api/dashboard/");
             setInquiries(response.data.inquiries || []);
         } catch (error) {
             console.error("Inquiry loading error:", error);
@@ -23,10 +23,10 @@ function InquiriesPage() {
 
     const updateStatus = async (id, status) => {
         try {
-            const csrf = await api.get("csrf/");
+            const csrf = await api.get("/api/csrf/");
 
             await api.patch(
-                `leads/inquiries/${id}/status/`,
+                `/api/leads/inquiries/${id}/status/`,
                 { status },
                 {
                     headers: {

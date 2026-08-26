@@ -9,7 +9,7 @@ function ProtectedRoute({ children }) {
     useEffect(() => {
         async function checkAuth() {
             try {
-                await api.get("auth/me/");
+                await api.get("/api/auth/me/");
                 setAuthenticated(true);
             } catch {
                 setAuthenticated(false);

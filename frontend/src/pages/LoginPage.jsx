@@ -20,12 +20,12 @@ function LoginPage() {
     setError("");
 
     try {
-        const csrfResponse = await api.get("csrf/");
+        const csrfResponse = await api.get("/api/csrf/");
 
         const csrfToken = csrfResponse.data.csrfToken;
 
         await api.post(
-            "auth/login/",
+            "/api/auth/login/",
             {
                 username,
                 password,

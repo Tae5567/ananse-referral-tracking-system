@@ -37,14 +37,14 @@ function CustomSalePage() {
 
     try {
         // Get CSRF cookie first
-        const csrfResponse = await api.get("csrf/");
+        const csrfResponse = await api.get("/api/csrf/");
 
         const csrfToken =
             csrfResponse.data.csrfToken ||
             csrfResponse.data.csrftoken;
 
         await api.post(
-            "sales/custom-sales/",
+            "/api/sales/custom-sales/",
             form,
             {
                 headers: {

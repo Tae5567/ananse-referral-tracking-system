@@ -33,7 +33,7 @@ const formatDate = (value) => {
 function DashboardPage() {
 
     const getCsrfToken = async () => {
-    const response = await api.get("csrf/");
+    const response = await api.get("/api/csrf/");
     return response.data.csrfToken;
 };
 
@@ -57,7 +57,7 @@ function DashboardPage() {
         try {
 
             const response = await api.get(
-                "dashboard/"
+                "/api/dashboard/"
             );
 
             setData(response.data);
@@ -109,7 +109,7 @@ function DashboardPage() {
 
         try {
 
-            await api.post("auth/logout/");
+            await api.post("/api/auth/logout/");
 
         } catch (err) {
 
@@ -148,7 +148,7 @@ function DashboardPage() {
             const csrfToken = await getCsrfToken();
 
             const response = await api.post(
-                "sales/orders/import/",
+                "/api/sales/orders/import/",
                 formData,
                 {
                     headers: {
@@ -198,7 +198,7 @@ function DashboardPage() {
             const csrfToken = await getCsrfToken();
 
             await api.patch(
-                `sales/orders/${orderId}/status/`,
+                `/api/sales/orders/${orderId}/status/`,
                 {
                     status: newStatus,
                 },
@@ -242,7 +242,7 @@ function DashboardPage() {
             const csrfToken = await getCsrfToken();
 
             await api.patch(
-                `leads/inquiries/${inquiryId}/status/`,
+                `/api/leads/inquiries/${inquiryId}/status/`,
                 {
                     status: newStatus,
                 },
