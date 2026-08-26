@@ -22,7 +22,7 @@ function ServicesPage() {
 
     return (
         <div className="min-h-screen bg-[#FAF8F5] px-6 py-12">
-            <div className="mx-auto max-w-6xl">
+            <div className="mx-auto max-w-5xl">
 
                 <div className="mx-auto max-w-2xl text-center">
                     <p className="text-sm font-semibold uppercase tracking-widest text-[#B68D40]">

@@ -53,7 +53,7 @@ function InquiriesPage() {
 
     return (
         <DashboardLayout>
-            <div className="mx-auto max-w-6xl px-6 py-10">
+            <div className="mx-auto max-w-5xl px-6 py-10">
 
                 <div className="mb-8">
                     <h1 className="text-3xl font-semibold">

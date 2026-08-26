@@ -332,7 +332,7 @@ function DashboardPage() {
 
             <header className="border-b bg-white">
 
-                <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
+                <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
 
                     <img
                         src={logo}
