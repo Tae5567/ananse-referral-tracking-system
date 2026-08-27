@@ -67,7 +67,7 @@ const services = [
         id: 9,
         name: "Something Else",
         description:
-            "Can't find what you're looking for? Tell Camille what you need",
+            "Can't find what you're looking for? Tell us what you need",
         category: "Custom",
         paymentUrl: null,
     },

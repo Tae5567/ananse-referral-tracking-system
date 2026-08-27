@@ -39,7 +39,7 @@ function Hero({ referral }) {
                         </p>
 
                         <p className="mt-2 text-gray-600">
-                            Feel free to reach out and I'd be happy to help you
+                            Feel free to reach out. We are happy to help you
                             choose the service that's right for you.
                         </p>
                     </div>
