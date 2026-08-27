@@ -78,7 +78,7 @@ try {
                     </h1>
 
                     <p className="mt-4 text-gray-600">
-                        Camille will follow up with you about your request.
+                        We will follow up with you about your request.
                     </p>
 
                     <button
@@ -111,7 +111,7 @@ try {
 
                 <p className="mt-4 text-gray-600">
                     Can't find the service you're looking for?
-                    Tell us about it and Camille will get in touch.
+                    Tell us about it and we will get in touch.
                 </p>
 
                 <form

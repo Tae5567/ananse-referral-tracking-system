@@ -91,7 +91,7 @@ function ServicesPage() {
                         onClick={() => navigate(`/inquiry?ref=${referralCode}`)}
                         className="mt-3 font-semibold underline underline-offset-4"
                     >
-                        Tell Camille what you need
+                        Tell us what you need
                     </button>
                 </div>
 
