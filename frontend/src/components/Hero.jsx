@@ -13,7 +13,7 @@ function Hero({ referral }) {
                     </p>
 
                     <h1 className="mt-5 text-4xl lg:text-5xl font-bold leading-tight text-gray-900">
-                        Hi! I'm Camille, and I'd love to welcome you to the Ananse Center for Design.
+                        Welcome to the Ananse Center for Design.
                     </h1>
 
                     <div className="mt-7 space-y-5 text-lg leading-8 text-gray-600">
