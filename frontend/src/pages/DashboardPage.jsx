@@ -444,12 +444,12 @@ function DashboardPage() {
                     />
 
                     <StatCard
-                        label="Paid Website Orders"
+                        label="Website Orders"
                         value={stats.website_orders}
                     />
 
                     <StatCard
-                        label="Paid Custom Sales"
+                        label="Custom Sales"
                         value={stats.custom_sales}
                     />
 
@@ -459,7 +459,7 @@ function DashboardPage() {
                     />
 
                     <StatCard
-                        label="Visitor Conversion Rate"
+                        label="Conversion Rate"
                         value={`${stats.conversion_rate}%`}
                     />
 
