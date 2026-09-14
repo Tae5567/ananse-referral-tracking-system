@@ -91,7 +91,7 @@ class DashboardView(APIView):
                     "service": order.product_name,
                     "type": "Website",
                     "amount": str(order.total_amount),
-                    "status": order.status,
+                    "status": order.payment_status,
                     "date": order.purchase_date or order.created_at,
                 }
             )

@@ -13,6 +13,7 @@ class Order(TimestampedModel):
     PAYMENT_STATUS_CHOICES = [
         ("pending", "Pending"),
         ("paid", "Paid"),
+        ("not_paid", "Not Paid"),
         ("failed", "Payment Failed"),
         ("cancelled", "Cancelled"),
         ("refunded", "Refunded"),

@@ -75,6 +75,7 @@ class OrderPaymentStatusAPIView(APIView):
     VALID_STATUSES = {
         "pending",
         "paid",
+        "not_paid",
         "failed",
         "cancelled",
         "refunded",

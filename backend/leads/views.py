@@ -85,15 +85,16 @@ class LeadCreateAPIView(APIView):
         email = serializer.validated_data["email"]
         phone = serializer.validated_data["phone"]
 
-        existing = Lead.objects.filter(Q(email=email) | Q(phone=phone)).first()
-
-        default_assignee = referral.managed_by or referral.owner
+        existing = Lead.objects.filter(
+            referral=referral
+        ).filter(
+            Q(email__iexact=email) |
+            Q(phone=phone)
+        ).first()
+        
 
         if existing:
-            existing.referral = referral
             existing.visitor = visitor
-            if not existing.assigned_to_id:
-                existing.assigned_to = default_assignee
             existing.save()
 
             return Response({
@@ -105,7 +106,6 @@ class LeadCreateAPIView(APIView):
         lead = Lead.objects.create(
             referral=referral,
             visitor=visitor,
-            assigned_to=default_assignee,
             **serializer.validated_data,
         )
 
