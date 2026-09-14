@@ -1,5 +1,7 @@
 import uuid
 
+from django.conf import settings
+
 from django.http import Http404
 from django.shortcuts import render
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -85,8 +87,8 @@ class ReferralLandingAPIView(APIView):
             str(visitor.visitor_id),
             max_age=60 * 60 * 24 * 365,
             httponly=True,
-            samesite="None",
-            secure=True,
+            samesite="Lax" if settings.DEBUG else "None",
+            secure=not settings.DEBUG,
         )
 
         return response

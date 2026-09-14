@@ -22,6 +22,8 @@ from .serializers import CustomSaleSerializer
 
 class CustomSaleCreateView(APIView):
 
+    permission_classes = [IsAuthenticated]
+
     def post(self, request):
 
         data = request.data.copy()
