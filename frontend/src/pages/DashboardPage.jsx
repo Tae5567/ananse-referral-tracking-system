@@ -200,7 +200,7 @@ function DashboardPage() {
             await api.patch(
                 `/api/sales/orders/${orderId}/status/`,
                 {
-                    status: newStatus,
+                    payment_status: newStatus,
                 },
                 {
                     headers: {
@@ -244,7 +244,7 @@ function DashboardPage() {
             await api.patch(
                 `/api/leads/inquiries/${inquiryId}/status/`,
                 {
-                    status: newStatus,
+                    payment_status: newStatus,
                 },
                 {
                     headers: {

@@ -111,9 +111,10 @@ function InquiriesPage() {
                                         <option value="contacted">
                                             Contacted
                                         </option>
-                                        <option value="converted">
-                                            Converted
-                                        </option>
+                                        <option value="follow_up">Follow-up Required</option>
+                                        <option value="quoted">Quote Sent</option>
+                                        <option value="converted">Converted</option>
+                                        <option value="lost">Lost</option>
                                     </select>
                                 </div>
 

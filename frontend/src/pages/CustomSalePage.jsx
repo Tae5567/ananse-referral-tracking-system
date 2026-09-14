@@ -82,8 +82,7 @@ function CustomSalePage() {
                     </h1>
 
                     <p className="mt-4 text-gray-600">
-                        The sale has been successfully added to Camille's
-                        referral activity.
+                        The sale has been successfully recorded.
                     </p>
 
                     <button
