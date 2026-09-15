@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from leads.models import Lead
+from leads.access import leads_for_user
 from referrals.models import Referral
 
 from .models import CustomSale, Order
@@ -38,34 +39,58 @@ class CustomSaleCreateView(APIView):
         email = data.get("customer_email", "").strip().lower()
         phone = data.get("customer_phone", "").strip()
 
-        referral = _staff_referral_for_user(request.user)
         lead = None
 
-        if referral:
-            if email:
-                lead = (
-                    Lead.objects
-                    .filter(
-                        referral=referral,
-                        email__iexact=email,
-                    )
-                    .order_by("-created_at")
-                    .first()
+        accessible_leads = leads_for_user(request.user)
+
+        # If the frontend explicitly sends a lead ID, use that first.
+        lead_id = data.get("lead")
+
+        if lead_id:
+            lead = accessible_leads.filter(id=lead_id).first()
+
+            if not lead:
+                return Response(
+                    {
+                        "success": False,
+                        "error": "That lead is not available to this account.",
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            if not lead and phone:
-                lead = (
-                    Lead.objects
-                    .filter(
-                        referral=referral,
-                        phone=phone,
-                    )
-                    .order_by("-created_at")
-                    .first()
-                )
+        # Otherwise match by email.
+        if not lead and email:
+            lead = (
+                accessible_leads
+                .filter(email__iexact=email)
+                .order_by("-created_at")
+                .first()
+            )
 
-        if lead:
-            data["lead"] = lead.id
+        # Then try phone.
+        if not lead and phone:
+            lead = (
+                accessible_leads
+                .filter(phone=phone)
+                .order_by("-created_at")
+                .first()
+            )
+
+        # A custom sale must have an attributed lead.
+        if not lead:
+            return Response(
+                {
+                    "success": False,
+                    "error": (
+                        "No matching lead was found for this customer. "
+                        "Please make sure the email or phone number matches "
+                        "an existing lead before recording the sale."
+                    ),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        data["lead"] = lead.id
 
         serializer = CustomSaleSerializer(data=data)
 
@@ -73,7 +98,17 @@ class CustomSaleCreateView(APIView):
             sale = serializer.save()
 
             return Response(
-                CustomSaleSerializer(sale).data,
+                {
+                    "success": True,
+                    "sale": CustomSaleSerializer(sale).data,
+                    "lead": {
+                        "id": lead.id,
+                        "name": (
+                            f"{lead.first_name} {lead.last_name}"
+                        ).strip(),
+                        "referral_code": lead.referral.code,
+                    },
+                },
                 status=status.HTTP_201_CREATED,
             )
 
