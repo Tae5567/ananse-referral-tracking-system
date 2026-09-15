@@ -148,10 +148,43 @@ class StaffDetailAPIView(APIView):
                     {"success": False, "error": "Invalid staff role."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
+
+            if (
+                profile.role == StaffProfile.Role.MANAGER
+                and role != StaffProfile.Role.MANAGER
+                and StaffProfile.objects.filter(
+                    role=StaffProfile.Role.MANAGER,
+                    active=True,
+                    user__is_active=True,
+                ).exclude(user=user).count() == 0
+            ):
+                return Response(
+                    {"success": False, "error": "You cannot remove the last active manager."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             profile.role = role
 
         if "active" in request.data:
             active = bool(request.data.get("active"))
+            if request.user.id == user.id and not active:
+                return Response(
+                    {"success": False, "error": "You cannot deactivate your own account."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if (
+                not active
+                and profile.role == StaffProfile.Role.MANAGER
+                and StaffProfile.objects.filter(
+                    role=StaffProfile.Role.MANAGER,
+                    active=True,
+                    user__is_active=True,
+                ).exclude(user=user).count() == 0
+            ):
+                return Response(
+                    {"success": False, "error": "You cannot deactivate the last active manager."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             profile.active = active
             user.is_active = active
 
@@ -186,6 +219,44 @@ class StaffDetailAPIView(APIView):
             referral.save()
 
         return Response({"success": True, "staff": _staff_payload(profile)})
+
+    @transaction.atomic
+    def delete(self, request, user_id):
+        user = get_object_or_404(User, id=user_id)
+        profile = get_object_or_404(StaffProfile, user=user)
+
+        if request.user.id == user.id:
+            return Response(
+                {"success": False, "error": "You cannot delete your own account."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if profile.role == StaffProfile.Role.MANAGER:
+            remaining_managers = StaffProfile.objects.filter(
+                role=StaffProfile.Role.MANAGER,
+                active=True,
+                user__is_active=True,
+            ).exclude(user=user).count()
+            if remaining_managers == 0:
+                return Response(
+                    {"success": False, "error": "You cannot delete the last active manager."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        # Keep the referral row and all historical leads/clicks/sales attribution.
+        # User FKs are SET_NULL, so deleting the login does not erase history.
+        Referral.objects.filter(
+            owner=user,
+            source_type=Referral.SourceType.STAFF,
+        ).update(active=False)
+
+        deleted_name = user.get_full_name() or user.username
+        user.delete()
+
+        return Response({
+            "success": True,
+            "message": f"{deleted_name} was removed. Historical referral data was preserved.",
+        })
 
 
 class StaffOptionsAPIView(APIView):

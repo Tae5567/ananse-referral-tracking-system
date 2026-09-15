@@ -57,14 +57,16 @@ class ManagedReferralListCreateAPIView(APIView):
     permission_classes = [IsAuthenticated, IsManager]
 
     def get(self, request):
+        archived = request.query_params.get("archived", "false").lower() == "true"
         referrals = (
             Referral.objects.select_related("managed_by", "parent")
-            .filter(source_type__in=EXTERNAL_TYPES)
+            .filter(source_type__in=EXTERNAL_TYPES, active=not archived)
             .order_by("-created_at")
         )
         return Response({
             "success": True,
             "referrals": [_referral_payload(referral) for referral in referrals],
+            "archived": archived,
         })
 
     @transaction.atomic
@@ -144,3 +146,20 @@ class ManagedReferralDetailAPIView(APIView):
 
         referral.save()
         return Response({"success": True, "referral": _referral_payload(referral)})
+
+    def delete(self, request, referral_id):
+        referral = get_object_or_404(
+            Referral,
+            id=referral_id,
+            source_type__in=EXTERNAL_TYPES,
+        )
+
+        # Soft delete: preserve click, visitor and lead attribution.
+        referral.active = False
+        referral.save(update_fields=["active", "updated_at"])
+
+        return Response({
+            "success": True,
+            "message": "Referral link archived. Historical attribution was preserved.",
+            "referral": _referral_payload(referral),
+        })

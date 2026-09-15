@@ -33,15 +33,17 @@ function StaffManagementPage() {
 
     useEffect(() => { load(); }, []);
 
+    const csrfHeaders = async () => {
+        const csrf = await api.get("/api/csrf/");
+        return { "X-CSRFToken": csrf.data.csrfToken };
+    };
+
     const createStaff = async (event) => {
         event.preventDefault();
         setSaving(true);
         setMessage("");
         try {
-            const csrf = await api.get("/api/csrf/");
-            await api.post("/api/accounts/staff/", form, {
-                headers: { "X-CSRFToken": csrf.data.csrfToken },
-            });
+            await api.post("/api/accounts/staff/", form, { headers: await csrfHeaders() });
             setForm(emptyForm);
             setMessage("Staff account and referral link created.");
             await load();
@@ -54,13 +56,27 @@ function StaffManagementPage() {
 
     const updateStaff = async (id, changes) => {
         try {
-            const csrf = await api.get("/api/csrf/");
-            await api.patch(`/api/accounts/staff/${id}/`, changes, {
-                headers: { "X-CSRFToken": csrf.data.csrfToken },
-            });
+            await api.patch(`/api/accounts/staff/${id}/`, changes, { headers: await csrfHeaders() });
             await load();
         } catch (err) {
             alert(err.response?.data?.error || "Unable to update staff member.");
+        }
+    };
+
+    const deleteStaff = async (person) => {
+        const confirmed = window.confirm(
+            `Delete ${person.name}'s login account? Their referral link will be disabled, but historical leads, clicks and sales attribution will be preserved.`
+        );
+        if (!confirmed) return;
+
+        try {
+            const response = await api.delete(`/api/accounts/staff/${person.id}/`, {
+                headers: await csrfHeaders(),
+            });
+            alert(response.data.message || "Staff account removed.");
+            await load();
+        } catch (err) {
+            alert(err.response?.data?.error || "Unable to delete staff member.");
         }
     };
 
@@ -101,13 +117,14 @@ function StaffManagementPage() {
                         <EmptyState title="No staff accounts yet" />
                     ) : (
                         <div className="scrollbar-thin overflow-x-auto">
-                            <table className="min-w-[720px] w-full border-collapse text-sm">
+                            <table className="min-w-[860px] w-full border-collapse text-sm">
                                 <thead className="bg-[#FBFAF8] text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-neutral-400">
                                     <tr>
                                         <th className="px-5 py-3">Staff</th>
                                         <th className="px-5 py-3">Role</th>
                                         <th className="px-5 py-3">Referral</th>
                                         <th className="px-5 py-3">Status</th>
+                                        <th className="px-5 py-3">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -127,6 +144,11 @@ function StaffManagementPage() {
                                             <td className="px-5 py-4">
                                                 <button onClick={() => updateStaff(person.id, { active: !person.active })} className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${person.active ? "bg-emerald-50 text-emerald-700" : "bg-neutral-100 text-neutral-500"}`}>
                                                     {person.active ? "Active" : "Inactive"}
+                                                </button>
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                <button type="button" onClick={() => deleteStaff(person)} className="rounded-lg border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50">
+                                                    Delete account
                                                 </button>
                                             </td>
                                         </tr>
