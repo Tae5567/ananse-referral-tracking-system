@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
 import DashboardLayout from "../components/DashboardLayout";
+import PageHeader from "../components/dashboard/PageHeader";
+import MetricCard from "../components/dashboard/MetricCard";
+import SectionCard from "../components/dashboard/SectionCard";
+import EmptyState from "../components/dashboard/EmptyState";
+import StatusBadge from "../components/dashboard/StatusBadge";
 
 const money = (value) => new Intl.NumberFormat("en-NG", {
     style: "currency",
@@ -23,92 +28,107 @@ function ManagementDashboardPage() {
             .finally(() => setLoading(false));
     }, []);
 
-    if (loading) return <DashboardLayout><div className="p-10">Loading management dashboard...</div></DashboardLayout>;
-    if (error) return <DashboardLayout><div className="p-10 text-red-600">{error}</div></DashboardLayout>;
+    if (loading) return <DashboardLayout><div className="app-page"><p className="text-sm text-neutral-500">Loading company overview...</p></div></DashboardLayout>;
+    if (error) return <DashboardLayout><div className="app-page"><div className="ui-card p-5 text-sm text-rose-700">{error}</div></div></DashboardLayout>;
 
     const stats = data?.stats || {};
+    const staff = data?.staff_performance || [];
+    const external = data?.external_sources || [];
 
     return (
         <DashboardLayout>
-            <div className="mx-auto max-w-7xl px-6 py-10">
-                <div className="mb-8">
-                    <p className="text-sm uppercase tracking-widest text-[#B68D40]">Management</p>
-                    <h1 className="mt-2 text-3xl font-semibold text-gray-900">Company referral & sales overview</h1>
-                    <p className="mt-2 text-gray-500">All staff referral performance, external sources and company-wide sales activity.</p>
+            <div className="app-page">
+                <PageHeader
+                    eyebrow="Management"
+                    title="Company overview"
+                    description="Referral, lead and sales performance across Ananse."
+                />
+
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
+                    <MetricCard label="Clicks" value={stats.clicks || 0} />
+                    <MetricCard label="Unique visitors" value={stats.unique_visitors || 0} />
+                    <MetricCard label="Total leads" value={stats.leads || 0} helper={`${stats.active_leads || 0} active`} />
+                    <MetricCard label="Website orders" value={stats.website_orders || 0} />
+                    <MetricCard label="Custom sales" value={stats.custom_sales || 0} />
+                    <MetricCard label="Total revenue" value={money(stats.total_revenue)} />
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    <Stat label="Clicks" value={stats.clicks || 0} />
-                    <Stat label="Unique visitors" value={stats.unique_visitors || 0} />
-                    <Stat label="Total leads" value={stats.leads || 0} sub={`${stats.active_leads || 0} active`} />
-                    <Stat label="Total revenue" value={money(stats.total_revenue)} />
-                    <Stat label="Website orders" value={stats.website_orders || 0} />
-                    <Stat label="Custom sales" value={stats.custom_sales || 0} />
-                </div>
-
-                <section className="mt-10 rounded-2xl bg-white p-6 shadow-sm">
-                    <div className="mb-5">
-                        <h2 className="text-xl font-semibold">Staff performance</h2>
-                        <p className="mt-1 text-sm text-gray-500">Performance is attributed to each staff member's referral source.</p>
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full text-sm">
-                            <thead className="text-left text-gray-500">
-                                <tr className="border-b">
-                                    <th className="py-3 pr-4">Staff</th><th className="py-3 pr-4">Link</th><th className="py-3 pr-4">Clicks</th><th className="py-3 pr-4">Leads</th><th className="py-3 pr-4">Website</th><th className="py-3 pr-4">Custom</th><th className="py-3">Revenue</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {(data.staff_performance || []).map((staff) => (
-                                    <tr key={staff.id} className="border-b last:border-0">
-                                        <td className="py-4 pr-4"><p className="font-medium">{staff.name}</p><p className="text-xs text-gray-500">{staff.role === "manager" ? "Manager" : "Sales Rep"}</p></td>
-                                        <td className="py-4 pr-4">{staff.referral ? `/r/${staff.referral.code}` : "—"}</td>
-                                        <td className="py-4 pr-4">{staff.metrics.clicks}</td>
-                                        <td className="py-4 pr-4">{staff.metrics.leads}</td>
-                                        <td className="py-4 pr-4">{staff.metrics.website_orders}</td>
-                                        <td className="py-4 pr-4">{staff.metrics.custom_sales}</td>
-                                        <td className="py-4 font-medium">{money(staff.metrics.total_revenue)}</td>
+                <SectionCard className="mt-5" title="Staff performance" description="Performance is attributed to each staff member's referral source.">
+                    {staff.length === 0 ? (
+                        <EmptyState title="No staff performance yet" />
+                    ) : (
+                        <div className="scrollbar-thin overflow-x-auto">
+                            <table className="min-w-[840px] w-full border-collapse text-sm">
+                                <thead className="bg-[#FBFAF8] text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-neutral-400">
+                                    <tr>
+                                        <th className="px-5 py-3">Staff</th>
+                                        <th className="px-5 py-3">Referral</th>
+                                        <th className="px-5 py-3">Clicks</th>
+                                        <th className="px-5 py-3">Leads</th>
+                                        <th className="px-5 py-3">Website</th>
+                                        <th className="px-5 py-3">Custom</th>
+                                        <th className="px-5 py-3">Revenue</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
+                                </thead>
+                                <tbody>
+                                    {staff.map((person) => (
+                                        <tr key={person.id} className="border-t border-neutral-100 hover:bg-[#FCFBF9]">
+                                            <td className="px-5 py-4">
+                                                <p className="font-medium text-neutral-900">{person.name}</p>
+                                                <p className="mt-0.5 text-xs text-neutral-400">{person.role === "manager" ? "Manager" : "Sales Rep"}</p>
+                                            </td>
+                                            <td className="px-5 py-4 text-neutral-600">{person.referral ? `/r/${person.referral.code}` : "—"}</td>
+                                            <td className="px-5 py-4 text-neutral-700">{person.metrics.clicks}</td>
+                                            <td className="px-5 py-4 text-neutral-700">{person.metrics.leads}</td>
+                                            <td className="px-5 py-4 text-neutral-700">{person.metrics.website_orders}</td>
+                                            <td className="px-5 py-4 text-neutral-700">{person.metrics.custom_sales}</td>
+                                            <td className="px-5 py-4 font-semibold text-neutral-950">{money(person.metrics.total_revenue)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </SectionCard>
 
-                <section className="mt-8 rounded-2xl bg-white p-6 shadow-sm">
-                    <h2 className="text-xl font-semibold">Influencers & partners</h2>
-                    <p className="mt-1 text-sm text-gray-500">External sources are measured by traffic and leads. Ananse staff manage the follow-up internally.</p>
-                    <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                        {(data.external_sources || []).length === 0 ? (
-                            <p className="text-sm text-gray-500">No external referral sources yet.</p>
-                        ) : (data.external_sources || []).map((source) => (
-                            <div key={source.id} className="rounded-xl border p-4">
-                                <div className="flex items-start justify-between gap-3">
-                                    <div><p className="font-semibold">{source.name}</p><p className="text-xs capitalize text-gray-500">{source.source_type}</p></div>
-                                    <span className={`rounded-full px-2 py-1 text-xs ${source.active ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"}`}>{source.active ? "Active" : "Inactive"}</span>
+                <SectionCard className="mt-5" title="Influencers & partners" description="External sources are measured by traffic and leads. Follow-up is handled internally by Ananse staff.">
+                    {external.length === 0 ? (
+                        <EmptyState title="No external referral sources yet" />
+                    ) : (
+                        <div className="grid gap-3 p-4 sm:p-5 md:grid-cols-2 xl:grid-cols-3">
+                            {external.map((source) => (
+                                <div key={source.id} className="rounded-2xl border border-neutral-200/70 bg-[#FCFBF9] p-4">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <p className="font-semibold text-neutral-900">{source.name}</p>
+                                            <p className="mt-0.5 text-xs capitalize text-neutral-400">{source.source_type}</p>
+                                        </div>
+                                        <StatusBadge value={source.active ? "active" : "inactive"} />
+                                    </div>
+                                    <p className="mt-3 break-all text-xs text-neutral-500">/r/{source.code}</p>
+                                    <div className="mt-4 grid grid-cols-3 gap-2">
+                                        <MiniMetric label="Clicks" value={source.metrics.clicks} />
+                                        <MiniMetric label="Visitors" value={source.metrics.unique_visitors} />
+                                        <MiniMetric label="Leads" value={source.metrics.leads} />
+                                    </div>
+                                    <p className="mt-3 text-xs text-neutral-400">Managed by {source.managed_by || "Unassigned"}</p>
                                 </div>
-                                <p className="mt-3 text-sm text-gray-600">/r/{source.code}</p>
-                                <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-                                    <Metric label="Clicks" value={source.metrics.clicks} />
-                                    <Metric label="Visitors" value={source.metrics.unique_visitors} />
-                                    <Metric label="Leads" value={source.metrics.leads} />
-                                </div>
-                                <p className="mt-3 text-xs text-gray-500">Managed by: {source.managed_by || "Unassigned"}</p>
-                            </div>
-                        ))}
-                    </div>
-                </section>
+                            ))}
+                        </div>
+                    )}
+                </SectionCard>
             </div>
         </DashboardLayout>
     );
 }
 
-function Stat({ label, value, sub }) {
-    return <div className="rounded-2xl bg-white p-5 shadow-sm"><p className="text-sm text-gray-500">{label}</p><p className="mt-2 text-2xl font-semibold text-gray-900">{value}</p>{sub && <p className="mt-1 text-xs text-gray-500">{sub}</p>}</div>;
-}
-
-function Metric({ label, value }) {
-    return <div className="rounded-lg bg-gray-50 p-2"><p className="text-lg font-semibold">{value}</p><p className="text-[11px] text-gray-500">{label}</p></div>;
+function MiniMetric({ label, value }) {
+    return (
+        <div className="rounded-xl border border-neutral-200/70 bg-white px-3 py-3">
+            <p className="text-lg font-semibold tracking-tight text-neutral-950">{value}</p>
+            <p className="mt-0.5 text-[11px] text-neutral-400">{label}</p>
+        </div>
+    );
 }
 
 export default ManagementDashboardPage;

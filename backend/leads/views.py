@@ -79,23 +79,46 @@ class LeadCreateAPIView(APIView):
 
         visitor = None
         visitor_cookie = request.COOKIES.get(self.COOKIE_NAME)
+
         if visitor_cookie:
-            visitor = Visitor.objects.filter(visitor_id=visitor_cookie).first()
+            visitor = Visitor.objects.filter(
+                visitor_id=visitor_cookie
+            ).first()
 
         email = serializer.validated_data["email"]
         phone = serializer.validated_data["phone"]
 
-        existing = Lead.objects.filter(
-            referral=referral
-        ).filter(
-            Q(email__iexact=email) |
-            Q(phone=phone)
-        ).first()
-        
+        existing = (
+            Lead.objects
+            .filter(referral=referral)
+            .filter(
+                Q(email__iexact=email) |
+                Q(phone=phone)
+            )
+            .first()
+        )
+
+        default_assignee = referral.managed_by or referral.owner
 
         if existing:
             existing.visitor = visitor
-            existing.save()
+
+            if not existing.assigned_to_id:
+                existing.assigned_to = default_assignee
+                existing.save(
+                    update_fields=[
+                        "visitor",
+                        "assigned_to",
+                        "updated_at",
+                    ]
+                )
+            else:
+                existing.save(
+                    update_fields=[
+                        "visitor",
+                        "updated_at",
+                    ]
+                )
 
             return Response({
                 "success": True,
@@ -106,14 +129,20 @@ class LeadCreateAPIView(APIView):
         lead = Lead.objects.create(
             referral=referral,
             visitor=visitor,
+            assigned_to=default_assignee,
             **serializer.validated_data,
         )
 
         return Response(
-            {"success": True, "lead_id": lead.id, "existing": False},
+            {
+                "success": True,
+                "lead_id": lead.id,
+                "existing": False,
+            },
             status=status.HTTP_201_CREATED,
         )
 
+    
 
 class InquiryCreateAPIView(APIView):
     COOKIE_NAME = "visitor_id"

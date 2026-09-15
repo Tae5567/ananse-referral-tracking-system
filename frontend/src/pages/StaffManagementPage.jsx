@@ -1,8 +1,19 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
 import DashboardLayout from "../components/DashboardLayout";
+import PageHeader from "../components/dashboard/PageHeader";
+import SectionCard from "../components/dashboard/SectionCard";
+import EmptyState from "../components/dashboard/EmptyState";
 
-const emptyForm = { username: "", first_name: "", last_name: "", email: "", role: "sales_rep", password: "", referral_code: "" };
+const emptyForm = {
+    username: "",
+    first_name: "",
+    last_name: "",
+    email: "",
+    role: "sales_rep",
+    password: "",
+    referral_code: "",
+};
 
 function StaffManagementPage() {
     const [staff, setStaff] = useState([]);
@@ -15,61 +26,131 @@ function StaffManagementPage() {
         try {
             const response = await api.get("/api/accounts/staff/");
             setStaff(response.data.staff || []);
-        } finally { setLoading(false); }
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => { load(); }, []);
 
-    const createStaff = async (e) => {
-        e.preventDefault(); setSaving(true); setMessage("");
+    const createStaff = async (event) => {
+        event.preventDefault();
+        setSaving(true);
+        setMessage("");
         try {
             const csrf = await api.get("/api/csrf/");
-            await api.post("/api/accounts/staff/", form, { headers: { "X-CSRFToken": csrf.data.csrfToken } });
-            setForm(emptyForm); setMessage("Staff account and referral link created."); await load();
+            await api.post("/api/accounts/staff/", form, {
+                headers: { "X-CSRFToken": csrf.data.csrfToken },
+            });
+            setForm(emptyForm);
+            setMessage("Staff account and referral link created.");
+            await load();
         } catch (err) {
             setMessage(err.response?.data?.error || "Unable to create staff account.");
-        } finally { setSaving(false); }
+        } finally {
+            setSaving(false);
+        }
     };
 
     const updateStaff = async (id, changes) => {
         try {
             const csrf = await api.get("/api/csrf/");
-            await api.patch(`/api/accounts/staff/${id}/`, changes, { headers: { "X-CSRFToken": csrf.data.csrfToken } });
+            await api.patch(`/api/accounts/staff/${id}/`, changes, {
+                headers: { "X-CSRFToken": csrf.data.csrfToken },
+            });
             await load();
-        } catch (err) { alert(err.response?.data?.error || "Unable to update staff member."); }
+        } catch (err) {
+            alert(err.response?.data?.error || "Unable to update staff member.");
+        }
     };
 
     return (
         <DashboardLayout>
-            <div className="mx-auto max-w-7xl px-6 py-10">
-                <div className="mb-8"><p className="text-sm uppercase tracking-widest text-[#B68D40]">Management</p><h1 className="mt-2 text-3xl font-semibold">Staff & sales reps</h1><p className="mt-2 text-gray-500">Create internal accounts and automatically give each person their own referral link.</p></div>
+            <div className="app-page">
+                <PageHeader
+                    eyebrow="Management"
+                    title="Staff & sales reps"
+                    description="Create internal accounts, manage roles and give each staff member their own referral link."
+                />
 
-                <form onSubmit={createStaff} className="rounded-2xl bg-white p-6 shadow-sm">
-                    <h2 className="text-lg font-semibold">Add staff member</h2>
-                    <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        <Input label="Username" value={form.username} onChange={(v) => setForm({ ...form, username: v })} required />
-                        <Input label="First name" value={form.first_name} onChange={(v) => setForm({ ...form, first_name: v })} />
-                        <Input label="Last name" value={form.last_name} onChange={(v) => setForm({ ...form, last_name: v })} />
-                        <Input label="Email" type="email" value={form.email} onChange={(v) => setForm({ ...form, email: v })} />
-                        <label className="text-sm">Role<select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="mt-2 w-full rounded-xl border px-3 py-3"><option value="sales_rep">Sales Rep</option><option value="manager">Manager / Admin</option></select></label>
-                        <Input label="Temporary password" type="password" value={form.password} onChange={(v) => setForm({ ...form, password: v })} />
-                        <Input label="Referral code" placeholder="e.g. onome" value={form.referral_code} onChange={(v) => setForm({ ...form, referral_code: v })} />
-                    </div>
-                    <button disabled={saving} className="mt-5 rounded-xl bg-black px-5 py-3 text-sm font-medium text-white disabled:opacity-50">{saving ? "Creating..." : "Create staff account"}</button>
-                    {message && <p className="mt-3 text-sm text-gray-600">{message}</p>}
-                </form>
+                <SectionCard title="Add staff member" description="Managers can create both sales rep and manager accounts.">
+                    <form onSubmit={createStaff} className="grid gap-4 p-4 sm:grid-cols-2 sm:p-5 xl:grid-cols-4">
+                        <Input label="Username" value={form.username} onChange={(value) => setForm({ ...form, username: value })} required />
+                        <Input label="First name" value={form.first_name} onChange={(value) => setForm({ ...form, first_name: value })} />
+                        <Input label="Last name" value={form.last_name} onChange={(value) => setForm({ ...form, last_name: value })} />
+                        <Input label="Email" type="email" value={form.email} onChange={(value) => setForm({ ...form, email: value })} />
+                        <Field label="Role">
+                            <select value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value })} className="ui-input">
+                                <option value="sales_rep">Sales Rep</option>
+                                <option value="manager">Manager / Admin</option>
+                            </select>
+                        </Field>
+                        <Input label="Temporary password" type="password" value={form.password} onChange={(value) => setForm({ ...form, password: value })} />
+                        <Input label="Referral code" placeholder="e.g. onome" value={form.referral_code} onChange={(value) => setForm({ ...form, referral_code: value.toLowerCase() })} />
+                        <div className="flex items-end">
+                            <button disabled={saving} className="btn-primary w-full">{saving ? "Creating..." : "Create account"}</button>
+                        </div>
+                        {message && <p className="text-sm text-neutral-600 sm:col-span-2 xl:col-span-4">{message}</p>}
+                    </form>
+                </SectionCard>
 
-                <section className="mt-8 rounded-2xl bg-white p-6 shadow-sm">
-                    <h2 className="text-lg font-semibold">Current staff</h2>
-                    {loading ? <p className="mt-4 text-gray-500">Loading...</p> : <div className="mt-4 overflow-x-auto"><table className="min-w-full text-sm"><thead className="text-left text-gray-500"><tr className="border-b"><th className="py-3 pr-4">Name</th><th className="py-3 pr-4">Role</th><th className="py-3 pr-4">Referral</th><th className="py-3">Status</th></tr></thead><tbody>{staff.map((person) => <tr key={person.id} className="border-b last:border-0"><td className="py-4 pr-4"><p className="font-medium">{person.name}</p><p className="text-xs text-gray-500">@{person.username}</p></td><td className="py-4 pr-4"><select value={person.role} onChange={(e) => updateStaff(person.id, { role: e.target.value })} className="rounded-lg border px-3 py-2"><option value="sales_rep">Sales Rep</option><option value="manager">Manager / Admin</option></select></td><td className="py-4 pr-4">{person.referral ? `/r/${person.referral.code}` : "—"}</td><td className="py-4"><button onClick={() => updateStaff(person.id, { active: !person.active })} className={`rounded-full px-3 py-1 text-xs ${person.active ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-600"}`}>{person.active ? "Active" : "Inactive"}</button></td></tr>)}</tbody></table></div>}
-                </section>
+                <SectionCard className="mt-5" title="Current staff" description={`${staff.length} internal account${staff.length === 1 ? "" : "s"}`}>
+                    {loading ? (
+                        <div className="px-5 py-8 text-sm text-neutral-500">Loading staff...</div>
+                    ) : staff.length === 0 ? (
+                        <EmptyState title="No staff accounts yet" />
+                    ) : (
+                        <div className="scrollbar-thin overflow-x-auto">
+                            <table className="min-w-[720px] w-full border-collapse text-sm">
+                                <thead className="bg-[#FBFAF8] text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-neutral-400">
+                                    <tr>
+                                        <th className="px-5 py-3">Staff</th>
+                                        <th className="px-5 py-3">Role</th>
+                                        <th className="px-5 py-3">Referral</th>
+                                        <th className="px-5 py-3">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {staff.map((person) => (
+                                        <tr key={person.id} className="border-t border-neutral-100 hover:bg-[#FCFBF9]">
+                                            <td className="px-5 py-4">
+                                                <p className="font-medium text-neutral-900">{person.name}</p>
+                                                <p className="mt-0.5 text-xs text-neutral-400">@{person.username}</p>
+                                            </td>
+                                            <td className="px-5 py-4">
+                                                <select value={person.role} onChange={(event) => updateStaff(person.id, { role: event.target.value })} className="ui-input max-w-[180px] py-2 text-sm">
+                                                    <option value="sales_rep">Sales Rep</option>
+                                                    <option value="manager">Manager / Admin</option>
+                                                </select>
+                                            </td>
+                                            <td className="px-5 py-4 text-neutral-600">{person.referral ? `/r/${person.referral.code}` : "—"}</td>
+                                            <td className="px-5 py-4">
+                                                <button onClick={() => updateStaff(person.id, { active: !person.active })} className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${person.active ? "bg-emerald-50 text-emerald-700" : "bg-neutral-100 text-neutral-500"}`}>
+                                                    {person.active ? "Active" : "Inactive"}
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </SectionCard>
             </div>
         </DashboardLayout>
     );
 }
 
+function Field({ label, children }) {
+    return <label><span className="ui-label">{label}</span>{children}</label>;
+}
+
 function Input({ label, value, onChange, type = "text", placeholder = "", required = false }) {
-    return <label className="text-sm">{label}<input type={type} value={value} required={required} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className="mt-2 w-full rounded-xl border px-3 py-3" /></label>;
+    return (
+        <Field label={label}>
+            <input type={type} value={value} required={required} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} className="ui-input" />
+        </Field>
+    );
 }
 
 export default StaffManagementPage;

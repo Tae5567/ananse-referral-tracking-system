@@ -1,6 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import api from "../services/api";
 import DashboardLayout from "../components/DashboardLayout";
+import PageHeader from "../components/dashboard/PageHeader";
+import SectionCard from "../components/dashboard/SectionCard";
+import EmptyState from "../components/dashboard/EmptyState";
 
 const STATUS_OPTIONS = [
     ["new", "New"],
@@ -22,6 +25,7 @@ function LeadsPage() {
 
     const loadLeads = async () => {
         try {
+            setError("");
             const response = await api.get("/api/leads/manage/");
             setLeads(response.data.leads || []);
         } catch (err) {
@@ -37,8 +41,9 @@ function LeadsPage() {
             await loadLeads();
             try {
                 const me = await api.get("/api/auth/me/");
-                setUser(me.data.user);
-                if (me.data.user?.is_manager) {
+                const currentUser = me.data.user;
+                setUser(currentUser);
+                if (currentUser?.is_manager) {
                     const staff = await api.get("/api/accounts/staff/options/");
                     setStaffOptions(staff.data.staff || []);
                 }
@@ -56,18 +61,9 @@ function LeadsPage() {
             const response = await api.patch(
                 `/api/leads/manage/${leadId}/update/`,
                 changes,
-                {
-                    headers: {
-                        "X-CSRFToken": csrf.data.csrfToken,
-                    },
-                }
+                { headers: { "X-CSRFToken": csrf.data.csrfToken } }
             );
-
-            setLeads((current) =>
-                current.map((lead) =>
-                    lead.id === leadId ? response.data.lead : lead
-                )
-            );
+            setLeads((current) => current.map((lead) => lead.id === leadId ? response.data.lead : lead));
         } catch (err) {
             console.error("Lead update error:", err);
             alert(err.response?.data?.error || "Unable to update lead.");
@@ -76,148 +72,154 @@ function LeadsPage() {
         }
     };
 
+    const { myLeads, teamLeads } = useMemo(() => {
+        if (!user?.is_manager) return { myLeads: leads, teamLeads: [] };
+        const username = user.username;
+        const mine = [];
+        const team = [];
+        leads.forEach((lead) => {
+            const ownSource = lead.source_owner?.username === username;
+            const assigned = lead.assigned_to?.username === username;
+            (ownSource || assigned ? mine : team).push(lead);
+        });
+        return { myLeads: mine, teamLeads: team };
+    }, [leads, user]);
+
     return (
         <DashboardLayout>
-            <div className="mx-auto max-w-6xl px-6 py-10">
-                <div className="mb-8">
-                    <p className="text-sm uppercase tracking-widest text-[#B68D40]">
-                        Sales Pipeline
-                    </p>
-                    <h1 className="mt-2 text-3xl font-semibold text-gray-900">
-                        Leads
-                    </h1>
-                    <p className="mt-2 text-gray-500">
-                        View contact-form responses, referral source, inquiry details and follow-up status.
-                    </p>
-                </div>
+            <div className="app-page">
+                <PageHeader
+                    eyebrow="Sales pipeline"
+                    title="Leads"
+                    description="Manage referral contacts, assignment, follow-up status and customer responses."
+                />
 
                 {loading ? (
-                    <p className="text-gray-500">Loading leads...</p>
+                    <p className="text-sm text-neutral-500">Loading leads...</p>
                 ) : error ? (
-                    <p className="text-red-600">{error}</p>
+                    <div className="ui-card p-5 text-sm text-rose-700">{error}</div>
                 ) : leads.length === 0 ? (
-                    <div className="rounded-2xl bg-white p-10 text-center shadow-sm">
-                        <p className="text-gray-500">No leads yet.</p>
+                    <SectionCard><EmptyState title="No leads yet" /></SectionCard>
+                ) : user?.is_manager ? (
+                    <div className="space-y-5">
+                        <LeadSection title="My leads" description="Generated through your referral link or currently assigned to you." leads={myLeads} user={user} staffOptions={staffOptions} saving={saving} expanded={expanded} setExpanded={setExpanded} updateLead={updateLead} />
+                        <LeadSection title="Team leads" description="Leads belonging to other staff, influencers or partners." leads={teamLeads} user={user} staffOptions={staffOptions} saving={saving} expanded={expanded} setExpanded={setExpanded} updateLead={updateLead} />
                     </div>
                 ) : (
-                    <div className="space-y-4">
-                        {leads.map((lead) => (
-                            <div key={lead.id} className="rounded-2xl bg-white p-6 shadow-sm">
-                                <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                                    <div className="min-w-0">
-                                        <div className="flex flex-wrap items-center gap-3">
-                                            <h2 className="text-lg font-semibold text-gray-900">
-                                                {lead.first_name} {lead.last_name}
-                                            </h2>
-                                            <span className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-600">
-                                                {lead.referral?.name || lead.referral?.code}
-                                            </span>
-                                            <span className="rounded-full bg-gray-100 px-3 py-1 text-xs capitalize text-gray-600">
-                                                {lead.referral?.source_type}
-                                            </span>
-                                        </div>
-
-                                        <div className="mt-3 grid gap-1 text-sm text-gray-600 sm:grid-cols-2">
-                                            <p>{lead.email}</p>
-                                            <p>{lead.phone}</p>
-                                            <p>
-                                                Interest: {lead.service_name || lead.interest_display || "—"}
-                                            </p>
-                                            <p>
-                                                Assigned to: {lead.assigned_to?.name || "Unassigned"}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex flex-col gap-2 sm:flex-row">
-                                        {user?.is_manager && (
-                                            <select
-                                                value={lead.assigned_to?.id || ""}
-                                                disabled={saving === lead.id}
-                                                onChange={(event) =>
-                                                    updateLead(lead.id, { assigned_to_id: event.target.value || null })
-                                                }
-                                                className="rounded-xl border px-4 py-2 text-sm"
-                                            >
-                                                <option value="">Unassigned</option>
-                                                {staffOptions.map((person) => (
-                                                    <option key={person.id} value={person.id}>{person.name}</option>
-                                                ))}
-                                            </select>
-                                        )}
-                                        <select
-                                            value={lead.status}
-                                            disabled={saving === lead.id}
-                                            onChange={(event) =>
-                                                updateLead(lead.id, { status: event.target.value })
-                                            }
-                                            className="rounded-xl border px-4 py-2 text-sm"
-                                        >
-                                            {STATUS_OPTIONS.map(([value, label]) => (
-                                                <option key={value} value={value}>{label}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <button
-                                    type="button"
-                                    onClick={() => setExpanded(expanded === lead.id ? null : lead.id)}
-                                    className="mt-5 text-sm font-medium underline"
-                                >
-                                    {expanded === lead.id ? "Hide details" : "View lead response"}
-                                </button>
-
-                                {expanded === lead.id && (
-                                    <div className="mt-5 grid gap-4 lg:grid-cols-2">
-                                        <div className="rounded-xl bg-gray-50 p-4">
-                                            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-                                                Inquiry / Lead response
-                                            </p>
-                                            <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-gray-700">
-                                                {lead.inquiry_message || "No inquiry message. This person completed the lead/contact form only."}
-                                            </p>
-                                        </div>
-
-                                        <NotesEditor lead={lead} saving={saving === lead.id} onSave={updateLead} />
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
+                    <LeadSection title="My leads" description="Leads generated through your referral link or assigned to you." leads={myLeads} user={user} staffOptions={staffOptions} saving={saving} expanded={expanded} setExpanded={setExpanded} updateLead={updateLead} />
                 )}
             </div>
         </DashboardLayout>
     );
 }
 
-function NotesEditor({ lead, saving, onSave }) {
-    const [notes, setNotes] = useState(lead.internal_notes || "");
+function LeadSection({ title, description, leads, user, staffOptions, saving, expanded, setExpanded, updateLead }) {
+    return (
+        <SectionCard
+            title={title}
+            description={description}
+            action={<span className="text-xs font-medium text-neutral-400">{leads.length} {leads.length === 1 ? "lead" : "leads"}</span>}
+        >
+            {leads.length === 0 ? (
+                <EmptyState title="No leads in this section" />
+            ) : (
+                <div className="divide-y divide-neutral-100">
+                    {leads.map((lead) => (
+                        <LeadRow key={lead.id} lead={lead} user={user} staffOptions={staffOptions} saving={saving} expanded={expanded} setExpanded={setExpanded} updateLead={updateLead} />
+                    ))}
+                </div>
+            )}
+        </SectionCard>
+    );
+}
 
-    useEffect(() => {
-        setNotes(lead.internal_notes || "");
-    }, [lead.internal_notes]);
+function LeadRow({ lead, user, staffOptions, saving, expanded, setExpanded, updateLead }) {
+    const isExpanded = expanded === lead.id;
+    const referralName = lead.referral?.name || lead.referral?.code || "Unknown source";
+    const sourceType = (lead.referral?.source_type || "referral").replaceAll("_", " ");
 
     return (
-        <div className="rounded-xl border p-4">
-            <label className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-                Internal follow-up notes
-            </label>
-            <textarea
-                rows="5"
-                value={notes}
-                onChange={(event) => setNotes(event.target.value)}
-                className="mt-3 w-full rounded-xl border px-4 py-3 text-sm"
-                placeholder="Add notes from calls, WhatsApp follow-up, quotes sent, etc."
-            />
+        <article className="px-4 py-4 sm:px-5">
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-start">
+                <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-[15px] font-semibold text-neutral-950 sm:text-base">{lead.first_name} {lead.last_name}</h3>
+                        <span className="rounded-full bg-[#F5F1E9] px-2.5 py-1 text-[11px] font-semibold text-[#7B6336]">Source: {referralName}</span>
+                        <span className="rounded-full bg-neutral-100 px-2.5 py-1 text-[11px] capitalize text-neutral-500">{sourceType}</span>
+                    </div>
+
+                    <div className="mt-3 grid gap-x-5 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                        <LeadField label="Email" value={lead.email || "—"} />
+                        <LeadField label="Phone" value={lead.phone || "—"} />
+                        <LeadField label="Interest" value={lead.service_name || lead.interest_display || "—"} />
+                        <LeadField label="Assigned to" value={lead.assigned_to?.name || "Unassigned"} />
+                    </div>
+                </div>
+
+                <div className={`grid gap-3 ${user?.is_manager ? "sm:grid-cols-2" : "sm:grid-cols-1"}`}>
+                    {user?.is_manager && (
+                        <ControlField label="Assign">
+                            <select
+                                value={lead.assigned_to?.id || ""}
+                                disabled={saving === lead.id}
+                                onChange={(event) => updateLead(lead.id, { assigned_to_id: event.target.value || null })}
+                                className="ui-input py-2 text-sm"
+                            >
+                                <option value="">Unassigned</option>
+                                {staffOptions.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
+                            </select>
+                        </ControlField>
+                    )}
+                    <ControlField label="Status">
+                        <select
+                            value={lead.status}
+                            disabled={saving === lead.id}
+                            onChange={(event) => updateLead(lead.id, { status: event.target.value })}
+                            className="ui-input py-2 text-sm"
+                        >
+                            {STATUS_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                        </select>
+                    </ControlField>
+                </div>
+            </div>
+
             <button
                 type="button"
-                disabled={saving}
-                onClick={() => onSave(lead.id, { internal_notes: notes })}
-                className="mt-3 rounded-xl bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                onClick={() => setExpanded(isExpanded ? null : lead.id)}
+                className="mt-3 text-xs font-semibold text-neutral-600 underline decoration-neutral-300 underline-offset-4 hover:text-neutral-950"
             >
-                {saving ? "Saving..." : "Save notes"}
+                {isExpanded ? "Hide details" : "View lead response"}
             </button>
+
+            {isExpanded && (
+                <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                    <div className="rounded-xl bg-[#F9F7F3] p-4">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-400">Inquiry / lead response</p>
+                        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-neutral-700">{lead.inquiry_message || "No inquiry message. This person completed the lead/contact form only."}</p>
+                    </div>
+                    <NotesEditor lead={lead} saving={saving === lead.id} onSave={updateLead} />
+                </div>
+            )}
+        </article>
+    );
+}
+
+function LeadField({ label, value }) {
+    return <div className="min-w-0"><p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-neutral-400">{label}</p><p className="mt-1 break-words text-sm leading-5 text-neutral-700">{value}</p></div>;
+}
+
+function ControlField({ label, children }) {
+    return <div><label className="ui-label">{label}</label>{children}</div>;
+}
+
+function NotesEditor({ lead, saving, onSave }) {
+    const [notes, setNotes] = useState(lead.internal_notes || "");
+    useEffect(() => setNotes(lead.internal_notes || ""), [lead.internal_notes]);
+    return (
+        <div className="rounded-xl border border-neutral-200 p-4">
+            <label className="ui-label">Internal follow-up notes</label>
+            <textarea rows="4" value={notes} onChange={(event) => setNotes(event.target.value)} className="ui-input resize-y text-sm" placeholder="Add notes from calls, WhatsApp follow-up, quotes sent, etc." />
+            <button type="button" disabled={saving} onClick={() => onSave(lead.id, { internal_notes: notes })} className="btn-primary mt-3">{saving ? "Saving..." : "Save notes"}</button>
         </div>
     );
 }
