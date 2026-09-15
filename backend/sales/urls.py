@@ -3,6 +3,7 @@ from django.urls import path
 from .views import (
     CustomSaleArchiveAPIView,
     CustomSaleCreateView,
+    CustomSaleSourceOptionsAPIView,
     OrderArchiveAPIView,
     OrderCSVImportAPIView,
     OrderPaymentStatusAPIView,
@@ -15,6 +16,11 @@ urlpatterns = [
         "custom-sales/",
         CustomSaleCreateView.as_view(),
         name="custom-sale-create",
+    ),
+    path(
+        "custom-sales/source-options/",
+        CustomSaleSourceOptionsAPIView.as_view(),
+        name="custom-sale-source-options",
     ),
     path(
         "custom-sales/<int:sale_id>/archive/",

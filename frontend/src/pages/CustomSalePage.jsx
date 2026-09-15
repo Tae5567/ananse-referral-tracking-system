@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+
 import api from "../services/api";
 import DashboardLayout from "../components/DashboardLayout";
 import PageHeader from "../components/dashboard/PageHeader";
@@ -7,6 +8,10 @@ import SectionCard from "../components/dashboard/SectionCard";
 
 function CustomSalePage() {
     const navigate = useNavigate();
+
+    const [sources, setSources] = useState([]);
+    const [sourceLoading, setSourceLoading] = useState(true);
+
     const [form, setForm] = useState({
         customer_first_name: "",
         customer_last_name: "",
@@ -18,24 +23,87 @@ function CustomSalePage() {
         status: "paid",
         notes: "",
         sale_date: new Date().toISOString().slice(0, 16),
+        referral_source_id: "",
     });
+
     const [loading, setLoading] = useState(false);
     const [submitted, setSubmitted] = useState(false);
+    const [result, setResult] = useState(null);
 
-    const handleChange = (event) => setForm({ ...form, [event.target.name]: event.target.value });
+    useEffect(() => {
+        const loadSources = async () => {
+            try {
+                const response = await api.get(
+                    "/api/sales/custom-sales/source-options/"
+                );
+
+                const options = response.data.sources || [];
+
+                setSources(options);
+
+                if (options.length > 0) {
+                    setForm((current) => ({
+                        ...current,
+                        referral_source_id:
+                            current.referral_source_id ||
+                            String(options[0].id),
+                    }));
+                }
+            } catch (error) {
+                console.error("Sales source loading error:", error);
+            } finally {
+                setSourceLoading(false);
+            }
+        };
+
+        loadSources();
+    }, []);
+
+    const handleChange = (event) => {
+        setForm((current) => ({
+            ...current,
+            [event.target.name]: event.target.value,
+        }));
+    };
 
     const submitSale = async (event) => {
         event.preventDefault();
+
+        if (!form.referral_source_id) {
+            alert("Please choose the sales source for this transaction.");
+            return;
+        }
+
         setLoading(true);
+
         try {
-            const csrf = await api.get("/api/csrf/");
-            await api.post("/api/sales/custom-sales/", form, {
-                headers: { "X-CSRFToken": csrf.data.csrfToken || csrf.data.csrftoken },
-            });
+            const csrfResponse = await api.get("/api/csrf/");
+            const csrfToken = csrfResponse.data.csrfToken;
+
+            const response = await api.post(
+                "/api/sales/custom-sales/",
+                {
+                    ...form,
+                    referral_source_id: Number(
+                        form.referral_source_id
+                    ),
+                },
+                {
+                    headers: {
+                        "X-CSRFToken": csrfToken,
+                    },
+                }
+            );
+
+            setResult(response.data);
             setSubmitted(true);
         } catch (error) {
             console.error("Custom sale error:", error);
-            alert(error.response?.data?.error || "Something went wrong. Please try again.");
+
+            alert(
+                error.response?.data?.error ||
+                "Something went wrong. Please try again."
+            );
         } finally {
             setLoading(false);
         }
@@ -44,12 +112,65 @@ function CustomSalePage() {
     if (submitted) {
         return (
             <DashboardLayout>
-                <div className="app-page flex min-h-[70vh] items-center justify-center">
-                    <div className="ui-card w-full max-w-lg p-8 text-center">
-                        <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-emerald-50 text-lg text-emerald-700">✓</div>
-                        <h1 className="mt-4 text-2xl font-semibold tracking-tight text-neutral-950">Sale recorded</h1>
-                        <p className="mt-2 text-sm text-neutral-500">The sale has been successfully added to the referral activity.</p>
-                        <button onClick={() => navigate("/dashboard")} className="btn-primary mt-6">Back to dashboard</button>
+                <div className="app-page">
+                    <div className="mx-auto max-w-xl">
+                        <SectionCard>
+                            <div className="p-6 text-center sm:p-8">
+                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#A4772B]">
+                                    Sale recorded
+                                </p>
+
+                                <h1 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-950">
+                                    Custom sale added
+                                </h1>
+
+                                <p className="mt-3 text-sm leading-6 text-neutral-500">
+                                    The sale has been attributed to{" "}
+                                    <span className="font-medium text-neutral-800">
+                                        {result?.lead?.referral_name ||
+                                            "the selected source"}
+                                    </span>
+                                    .
+                                </p>
+
+                                <div className="mt-6 flex flex-col justify-center gap-2 sm:flex-row">
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            navigate("/dashboard")
+                                        }
+                                        className="btn-primary"
+                                    >
+                                        Back to dashboard
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setSubmitted(false);
+                                            setResult(null);
+                                            setForm((current) => ({
+                                                ...current,
+                                                customer_first_name: "",
+                                                customer_last_name: "",
+                                                customer_email: "",
+                                                customer_phone: "",
+                                                service_name: "",
+                                                amount: "",
+                                                notes: "",
+                                                sale_date:
+                                                    new Date()
+                                                        .toISOString()
+                                                        .slice(0, 16),
+                                            }));
+                                        }}
+                                        className="btn-secondary"
+                                    >
+                                        Record another
+                                    </button>
+                                </div>
+                            </div>
+                        </SectionCard>
                     </div>
                 </div>
             </DashboardLayout>
@@ -59,47 +180,229 @@ function CustomSalePage() {
     return (
         <DashboardLayout>
             <div className="app-page">
-                <PageHeader eyebrow="Sales" title="Record custom sale" description="Record services or bookings paid outside the Ananse website." />
+                <PageHeader
+                    eyebrow="Sales"
+                    title="Record custom sale"
+                    description="Record sales completed outside the website, including bank transfers, walk-ins, WhatsApp customers and existing clients."
+                />
 
-                <SectionCard className="max-w-4xl">
-                    <form onSubmit={submitSale} className="grid gap-5 p-4 sm:grid-cols-2 sm:p-5">
-                        <Field label="First name"><input name="customer_first_name" value={form.customer_first_name} onChange={handleChange} required className="ui-input" /></Field>
-                        <Field label="Last name"><input name="customer_last_name" value={form.customer_last_name} onChange={handleChange} className="ui-input" /></Field>
-                        <Field label="Email"><input type="email" name="customer_email" value={form.customer_email} onChange={handleChange} className="ui-input" /></Field>
-                        <Field label="Phone"><input name="customer_phone" value={form.customer_phone} onChange={handleChange} className="ui-input" /></Field>
-                        <Field label="Service"><input name="service_name" value={form.service_name} onChange={handleChange} required placeholder="e.g. Photography studio" className="ui-input" /></Field>
-                        <Field label="Amount (₦)"><input type="number" name="amount" value={form.amount} onChange={handleChange} min="0" step="0.01" required className="ui-input" /></Field>
-                        <Field label="Payment method">
-                            <select name="payment_method" value={form.payment_method} onChange={handleChange} className="ui-input">
-                                <option value="bank_transfer">Bank Transfer</option>
-                                <option value="onsite">Onsite</option>
-                                <option value="other">Other</option>
-                            </select>
-                        </Field>
-                        <Field label="Payment status">
-                            <select name="status" value={form.status} onChange={handleChange} className="ui-input">
-                                <option value="paid">Paid</option>
-                                <option value="pending">Pending</option>
-                                <option value="cancelled">Cancelled</option>
-                            </select>
-                        </Field>
-                        <Field label="Sale date"><input type="datetime-local" name="sale_date" value={form.sale_date} onChange={handleChange} required className="ui-input" /></Field>
-                        <div className="sm:col-span-2">
-                            <Field label="Notes"><textarea name="notes" value={form.notes} onChange={handleChange} rows="4" placeholder="Optional notes about this sale..." className="ui-input resize-y" /></Field>
-                        </div>
-                        <div className="flex flex-col-reverse gap-2 border-t border-neutral-100 pt-4 sm:col-span-2 sm:flex-row sm:justify-end">
-                            <button type="button" onClick={() => navigate(-1)} className="btn-secondary">Cancel</button>
-                            <button type="submit" disabled={loading} className="btn-primary">{loading ? "Recording..." : "Record sale"}</button>
-                        </div>
-                    </form>
-                </SectionCard>
+                <div className="mx-auto max-w-3xl">
+                    <SectionCard>
+                        <form
+                            onSubmit={submitSale}
+                            className="grid gap-5 p-5 sm:grid-cols-2 sm:p-6"
+                        >
+                            <div className="sm:col-span-2">
+                                <label className="ui-label">
+                                    Sales source / attributed to
+                                </label>
+
+                                <select
+                                    name="referral_source_id"
+                                    value={form.referral_source_id}
+                                    onChange={handleChange}
+                                    disabled={sourceLoading}
+                                    className="ui-input mt-2 w-full"
+                                    required
+                                >
+                                    <option value="">
+                                        {sourceLoading
+                                            ? "Loading sources..."
+                                            : "Choose source"}
+                                    </option>
+
+                                    {sources.map((source) => (
+                                        <option
+                                            key={source.id}
+                                            value={source.id}
+                                        >
+                                            {source.name} —{" "}
+                                            {source.source_type_display}
+                                        </option>
+                                    ))}
+                                </select>
+
+                                <p className="mt-2 text-xs leading-5 text-neutral-400">
+                                    Choose who should receive attribution for
+                                    this sale. If the customer already exists
+                                    as a lead under this source, the sale will
+                                    use that lead. Otherwise the system creates
+                                    a converted lead automatically.
+                                </p>
+                            </div>
+
+                            <div>
+                                <label className="ui-label">
+                                    First name
+                                </label>
+                                <input
+                                    name="customer_first_name"
+                                    value={form.customer_first_name}
+                                    onChange={handleChange}
+                                    className="ui-input mt-2 w-full"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="ui-label">
+                                    Last name
+                                </label>
+                                <input
+                                    name="customer_last_name"
+                                    value={form.customer_last_name}
+                                    onChange={handleChange}
+                                    className="ui-input mt-2 w-full"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="ui-label">
+                                    Email
+                                </label>
+                                <input
+                                    type="email"
+                                    name="customer_email"
+                                    value={form.customer_email}
+                                    onChange={handleChange}
+                                    className="ui-input mt-2 w-full"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="ui-label">
+                                    Phone
+                                </label>
+                                <input
+                                    name="customer_phone"
+                                    value={form.customer_phone}
+                                    onChange={handleChange}
+                                    className="ui-input mt-2 w-full"
+                                />
+                            </div>
+
+                            <div className="sm:col-span-2">
+                                <label className="ui-label">
+                                    Service
+                                </label>
+                                <input
+                                    name="service_name"
+                                    value={form.service_name}
+                                    onChange={handleChange}
+                                    className="ui-input mt-2 w-full"
+                                    placeholder="e.g. Studio photography"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="ui-label">
+                                    Amount
+                                </label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    name="amount"
+                                    value={form.amount}
+                                    onChange={handleChange}
+                                    className="ui-input mt-2 w-full"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="ui-label">
+                                    Sale date
+                                </label>
+                                <input
+                                    type="datetime-local"
+                                    name="sale_date"
+                                    value={form.sale_date}
+                                    onChange={handleChange}
+                                    className="ui-input mt-2 w-full"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="ui-label">
+                                    Payment method
+                                </label>
+
+                                <select
+                                    name="payment_method"
+                                    value={form.payment_method}
+                                    onChange={handleChange}
+                                    className="ui-input mt-2 w-full"
+                                >
+                                    <option value="bank_transfer">
+                                        Bank Transfer
+                                    </option>
+                                    <option value="onsite">
+                                        Onsite
+                                    </option>
+                                    <option value="other">
+                                        Other
+                                    </option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="ui-label">
+                                    Payment status
+                                </label>
+
+                                <select
+                                    name="status"
+                                    value={form.status}
+                                    onChange={handleChange}
+                                    className="ui-input mt-2 w-full"
+                                >
+                                    <option value="paid">
+                                        Paid
+                                    </option>
+                                    <option value="pending">
+                                        Pending
+                                    </option>
+                                    <option value="cancelled">
+                                        Cancelled
+                                    </option>
+                                </select>
+                            </div>
+
+                            <div className="sm:col-span-2">
+                                <label className="ui-label">
+                                    Notes
+                                </label>
+
+                                <textarea
+                                    rows="4"
+                                    name="notes"
+                                    value={form.notes}
+                                    onChange={handleChange}
+                                    className="ui-input mt-2 w-full resize-y"
+                                    placeholder="Optional sales notes"
+                                />
+                            </div>
+
+                            <div className="sm:col-span-2">
+                                <button
+                                    type="submit"
+                                    disabled={loading || sourceLoading}
+                                    className="btn-primary w-full sm:w-auto"
+                                >
+                                    {loading
+                                        ? "Recording..."
+                                        : "Record sale"}
+                                </button>
+                            </div>
+                        </form>
+                    </SectionCard>
+                </div>
             </div>
         </DashboardLayout>
     );
-}
-
-function Field({ label, children }) {
-    return <label><span className="ui-label">{label}</span>{children}</label>;
 }
 
 export default CustomSalePage;

@@ -2,6 +2,7 @@ import os
 import tempfile
 
 from django.core import management
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 
 from rest_framework import status
@@ -10,8 +11,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from leads.models import Lead
+from accounts.permissions import is_manager
 from leads.access import leads_for_user
+from leads.models import Lead
 from referrals.models import Referral
 
 from .models import CustomSale, Order
@@ -30,6 +32,48 @@ def _staff_referral_for_user(user):
     )
 
 
+def _referral_sources_for_user(user):
+    """
+    Managers can attribute a manual/custom sale to any active referral source.
+    Normal staff can use their own referral and any external source they manage.
+    """
+    queryset = Referral.objects.filter(active=True)
+
+    if is_manager(user):
+        return queryset.order_by("name", "code")
+
+    return (
+        queryset
+        .filter(
+            Q(owner=user) |
+            Q(managed_by=user)
+        )
+        .distinct()
+        .order_by("name", "code")
+    )
+
+
+class CustomSaleSourceOptionsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        referrals = _referral_sources_for_user(request.user)
+
+        return Response({
+            "success": True,
+            "sources": [
+                {
+                    "id": referral.id,
+                    "name": referral.name,
+                    "code": referral.code,
+                    "source_type": referral.source_type,
+                    "source_type_display": referral.get_source_type_display(),
+                }
+                for referral in referrals
+            ],
+        })
+
+
 class CustomSaleCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -38,57 +82,131 @@ class CustomSaleCreateView(APIView):
 
         email = data.get("customer_email", "").strip().lower()
         phone = data.get("customer_phone", "").strip()
+        first_name = data.get("customer_first_name", "").strip()
+        last_name = data.get("customer_last_name", "").strip()
+        service_name = data.get("service_name", "").strip()
 
         lead = None
 
-        accessible_leads = leads_for_user(request.user)
+        # ---------------------------------------------------------
+        # 1. Resolve the referral/source that should get attribution.
+        # ---------------------------------------------------------
+        source_id = data.pop("referral_source_id", None)
 
-        # If the frontend explicitly sends a lead ID, use that first.
+        source = None
+
+        if source_id:
+            source = (
+                _referral_sources_for_user(request.user)
+                .filter(id=source_id)
+                .first()
+            )
+
+            if not source:
+                return Response(
+                    {
+                        "success": False,
+                        "error": "That sales source is not available to this account.",
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        else:
+            # Default to the logged-in staff member's own referral.
+            source = _staff_referral_for_user(request.user)
+
+        if not source:
+            return Response(
+                {
+                    "success": False,
+                    "error": (
+                        "Please choose a sales source before recording this sale."
+                    ),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # ---------------------------------------------------------
+        # 2. If a specific lead was supplied, use it if accessible.
+        # ---------------------------------------------------------
+        accessible_leads = leads_for_user(request.user)
         lead_id = data.get("lead")
 
         if lead_id:
-            lead = accessible_leads.filter(id=lead_id).first()
+            lead = accessible_leads.filter(
+                id=lead_id,
+                referral=source,
+            ).first()
 
             if not lead:
                 return Response(
                     {
                         "success": False,
-                        "error": "That lead is not available to this account.",
+                        "error": (
+                            "That lead is not available for the selected sales source."
+                        ),
                     },
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-        # Otherwise match by email.
+        # ---------------------------------------------------------
+        # 3. Otherwise try to match an existing lead under this source.
+        # ---------------------------------------------------------
         if not lead and email:
             lead = (
                 accessible_leads
-                .filter(email__iexact=email)
+                .filter(
+                    referral=source,
+                    email__iexact=email,
+                )
                 .order_by("-created_at")
                 .first()
             )
 
-        # Then try phone.
         if not lead and phone:
             lead = (
                 accessible_leads
-                .filter(phone=phone)
+                .filter(
+                    referral=source,
+                    phone=phone,
+                )
                 .order_by("-created_at")
                 .first()
             )
 
-        # A custom sale must have an attributed lead.
+        # ---------------------------------------------------------
+        # 4. No lead exists: create one automatically.
+        #
+        # This lets staff record walk-ins, WhatsApp customers,
+        # existing clients, corporate contacts, etc. without first
+        # forcing the customer through the public referral form.
+        # ---------------------------------------------------------
         if not lead:
-            return Response(
-                {
-                    "success": False,
-                    "error": (
-                        "No matching lead was found for this customer. "
-                        "Please make sure the email or phone number matches "
-                        "an existing lead before recording the sale."
-                    ),
-                },
-                status=status.HTTP_400_BAD_REQUEST,
+            lead = Lead.objects.create(
+                referral=source,
+                assigned_to=request.user,
+                first_name=first_name or "Customer",
+                last_name=last_name,
+                email=email,
+                phone=phone,
+                interest=Lead.Interest.CUSTOM_SERVICE,
+                service_name=service_name,
+                inquiry_message="",
+                status=Lead.Status.CONVERTED,
             )
+
+        # A completed custom sale means the lead has converted.
+        if lead.status != Lead.Status.CONVERTED:
+            lead.status = Lead.Status.CONVERTED
+
+            if not lead.assigned_to_id:
+                lead.assigned_to = request.user
+
+            update_fields = ["status", "updated_at"]
+
+            if lead.assigned_to_id == request.user.id:
+                update_fields.append("assigned_to")
+
+            lead.save(update_fields=list(dict.fromkeys(update_fields)))
 
         data["lead"] = lead.id
 
@@ -106,12 +224,17 @@ class CustomSaleCreateView(APIView):
                         "name": (
                             f"{lead.first_name} {lead.last_name}"
                         ).strip(),
-                        "referral_code": lead.referral.code,
+                        "referral_id": source.id,
+                        "referral_name": source.name,
+                        "referral_code": source.code,
+                        "created_automatically": lead_id is None,
                     },
                 },
                 status=status.HTTP_201_CREATED,
             )
 
+        # If the serializer fails and we just created a new lead,
+        # leave the lead in place rather than deleting business data.
         return Response(
             serializer.errors,
             status=status.HTTP_400_BAD_REQUEST,
@@ -210,19 +333,24 @@ class CustomSaleArchiveAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def patch(self, request, sale_id):
-        referral = _staff_referral_for_user(request.user)
+        sale = (
+            CustomSale.objects
+            .filter(id=sale_id)
+            .filter(
+                Q(lead__referral__owner=request.user) |
+                Q(lead__referral__managed_by=request.user)
+            )
+            .first()
+        )
 
-        if not referral:
+        if is_manager(request.user):
+            sale = CustomSale.objects.filter(id=sale_id).first()
+
+        if not sale:
             return Response(
-                {"success": False, "error": "No active staff referral found."},
+                {"success": False, "error": "Custom sale not found."},
                 status=status.HTTP_404_NOT_FOUND,
             )
-
-        sale = get_object_or_404(
-            CustomSale,
-            id=sale_id,
-            lead__referral=referral,
-        )
 
         archived = request.data.get("archived")
 
