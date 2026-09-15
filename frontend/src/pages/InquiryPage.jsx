@@ -19,6 +19,11 @@ function InquiryPage() {
     const submitInquiry = async (e) => {
         e.preventDefault();
 
+        if (!referralCode) {
+            alert("Referral information is missing. Please return to the referral page.");
+            return;
+        }
+
         if (!message.trim()) {
             alert("Please tell us what service you need.");
             return;
@@ -33,7 +38,7 @@ try {
         await api.post(
             "/api/leads/inquiry/",
             {
-                referral_code: "camille",
+                referral_code: referralCode,
                 service_name: serviceName,
                 inquiry_message: message,
             },

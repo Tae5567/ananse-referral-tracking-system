@@ -51,7 +51,7 @@ function LeadForm({ referralCode }) {
         }
     );
 
-    navigate("/services");
+    navigate(`/services?ref=${referralCode}`);
 
 } catch (err) {
     console.error(err);

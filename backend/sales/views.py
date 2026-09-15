@@ -16,6 +16,7 @@ from .importer import import_orders_from_csv
 
 from leads.models import Lead
 from .models import Order
+from referrals.models import Referral
 
 from .serializers import CustomSaleSerializer
 
@@ -31,21 +32,37 @@ class CustomSaleCreateView(APIView):
         email = data.get("customer_email", "").strip().lower()
         phone = data.get("customer_phone", "").strip()
 
+        referral = (
+            Referral.objects.filter(
+                owner=request.user,
+                source_type=Referral.SourceType.STAFF,
+                active=True,
+            )
+            .first()
+            )
+        
         # Automatically connect the sale to an existing referral lead
         lead = None
 
-        if email:
-            lead = (
-                Lead.objects
-                .filter(email__iexact=email)
-                .order_by("-created_at")
-                .first()
-            )
+        if referral:
+            if email:
+                lead = (
+                    Lead.objects
+                    .filter(
+                        referral=referral,
+                        email__iexact=email,
+                            )
+                        .order_by("-created_at")
+                        .first()
+                )
 
         if not lead and phone:
             lead = (
                 Lead.objects
-                .filter(phone=phone)
+                .filter(
+                    referral=referral,
+                    phone=phone
+                )
                 .order_by("-created_at")
                 .first()
             )

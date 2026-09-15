@@ -198,7 +198,7 @@ function DashboardPage() {
             const csrfToken = await getCsrfToken();
 
             await api.patch(
-                `/api/sales/orders/${orderId}/status/`,
+                `/api/sales/orders/${orderId}/payment-status/`,
                 {
                     payment_status: newStatus,
                 },
@@ -644,7 +644,7 @@ function DashboardPage() {
 
                                                     <select
                                                         value={
-                                                            order.status || "pending"
+                                                            order.payment_status || "pending"
                                                         }
                                                         disabled={
                                                             updatingOrder === order.id
@@ -668,6 +668,16 @@ function DashboardPage() {
 
                                                         <option value="not_paid">
                                                             Not Paid
+                                                        </option>
+
+                                                        <option value="failed">
+                                                            Failed
+                                                        </option>
+                                                        <option value="cancelled">
+                                                            Cancelled
+                                                        </option>
+                                                        <option value="refunded">
+                                                            Refunded
                                                         </option>
 
                                                     </select>

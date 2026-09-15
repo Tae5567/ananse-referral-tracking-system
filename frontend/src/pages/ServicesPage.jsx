@@ -12,7 +12,7 @@ function ServicesPage() {
 
     const handleServiceClick = (service) => {
         if (!service.paymentUrl) {
-            navigate("/inquiry");
+            navigate(`/inquiry?ref=${referralCode}`);
             return;
         }
 

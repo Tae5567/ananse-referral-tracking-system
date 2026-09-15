@@ -2,7 +2,7 @@ import hero from "../assets/hero.png";
 
 function Hero({ referral }) {
     return (
-        <section className="bg-[#FAF8F5]" text-black>
+        <section className="bg-[#FAF8F5] text-black">
             <div className="max-w-7xl mx-auto px-6 py-16 lg:py-20 grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
 
                 {/* Text */}
