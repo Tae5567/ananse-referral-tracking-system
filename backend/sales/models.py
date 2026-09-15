@@ -94,12 +94,15 @@ class Order(TimestampedModel):
         blank=True,
     )
 
-
-
     payment_status = models.CharField(
         max_length=20,
         choices=PAYMENT_STATUS_CHOICES,
         default="pending",
+    )
+
+    archived = models.BooleanField(
+        default=False,
+        db_index=True,
     )
 
     matched_lead = models.ForeignKey(
@@ -194,6 +197,11 @@ class CustomSale(TimestampedModel):
         max_length=20,
         choices=STATUS_CHOICES,
         default="paid",
+    )
+
+    archived = models.BooleanField(
+        default=False,
+        db_index=True,
     )
 
     notes = models.TextField(

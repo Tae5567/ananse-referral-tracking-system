@@ -1,6 +1,13 @@
 from django.urls import path
 
-from .views import CustomSaleCreateView, OrderCSVImportAPIView, OrderPaymentStatusAPIView, OrderStatusUpdateAPIView
+from .views import (
+    CustomSaleArchiveAPIView,
+    CustomSaleCreateView,
+    OrderArchiveAPIView,
+    OrderCSVImportAPIView,
+    OrderPaymentStatusAPIView,
+    OrderStatusUpdateAPIView,
+)
 
 
 urlpatterns = [
@@ -10,15 +17,28 @@ urlpatterns = [
         name="custom-sale-create",
     ),
     path(
+        "custom-sales/<int:sale_id>/archive/",
+        CustomSaleArchiveAPIView.as_view(),
+        name="custom-sale-archive",
+    ),
+    path(
         "orders/<int:order_id>/payment-status/",
         OrderPaymentStatusAPIView.as_view(),
+        name="order-payment-status",
+    ),
+    path(
+        "orders/<int:order_id>/archive/",
+        OrderArchiveAPIView.as_view(),
+        name="order-archive",
     ),
     path(
         "orders/import/",
         OrderCSVImportAPIView.as_view(),
+        name="order-import",
     ),
     path(
         "orders/<int:order_id>/status/",
         OrderStatusUpdateAPIView.as_view(),
+        name="order-status-legacy",
     ),
 ]

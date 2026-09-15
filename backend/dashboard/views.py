@@ -12,6 +12,56 @@ from referrals.models import Referral
 from sales.models import CustomSale, Order
 
 
+def _order_payload(order):
+    return {
+        "id": order.id,
+        "external_id": order.external_id,
+        "reference": order.reference,
+        "customer_name": (
+            f"{order.customer_first_name} {order.customer_last_name}"
+        ).strip(),
+        "email": order.customer_email,
+        "phone": order.customer_phone,
+        "service": order.product_name,
+        "amount": str(order.total_amount),
+        "status": order.status,
+        "payment_status": order.payment_status,
+        "archived": order.archived,
+        "date": order.purchase_date or order.created_at,
+        "match_method": order.match_method,
+    }
+
+
+def _website_activity_payload(order):
+    return {
+        "id": order.id,
+        "customer_name": (
+            f"{order.customer_first_name} {order.customer_last_name}"
+        ).strip(),
+        "service": order.product_name,
+        "type": "Website",
+        "amount": str(order.total_amount),
+        "status": order.payment_status,
+        "archived": order.archived,
+        "date": order.purchase_date or order.created_at,
+    }
+
+
+def _custom_activity_payload(sale):
+    return {
+        "id": sale.id,
+        "customer_name": (
+            f"{sale.customer_first_name} {sale.customer_last_name}"
+        ).strip(),
+        "service": sale.service_name,
+        "type": "Custom",
+        "amount": str(sale.amount),
+        "status": sale.status,
+        "archived": sale.archived,
+        "date": sale.sale_date or sale.created_at,
+    }
+
+
 class DashboardView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -44,8 +94,9 @@ class DashboardView(APIView):
         visitors = referral.clicks.values("visitor_id").distinct().count()
         leads = referral.leads.count()
 
-        orders = Order.objects.filter(matched_lead__referral=referral)
-        paid_orders = orders.filter(payment_status="paid")
+        # Archiving is display-only. Archived paid sales still count in metrics/revenue.
+        all_orders = Order.objects.filter(matched_lead__referral=referral)
+        paid_orders = all_orders.filter(payment_status="paid")
 
         website_revenue = (
             paid_orders.aggregate(total=Sum("total_amount"))["total"]
@@ -53,15 +104,16 @@ class DashboardView(APIView):
         )
         website_orders = paid_orders.count()
 
-        custom_sales = CustomSale.objects.filter(
+        all_custom_sales = CustomSale.objects.filter(
             lead__referral=referral,
-            status="paid",
         )
+        paid_custom_sales = all_custom_sales.filter(status="paid")
+
         custom_revenue = (
-            custom_sales.aggregate(total=Sum("amount"))["total"]
+            paid_custom_sales.aggregate(total=Sum("amount"))["total"]
             or Decimal("0")
         )
-        custom_sale_count = custom_sales.count()
+        custom_sale_count = paid_custom_sales.count()
 
         total_revenue = website_revenue + custom_revenue
         total_conversions = website_orders + custom_sale_count
@@ -72,7 +124,7 @@ class DashboardView(APIView):
             )
         )
         lead_ids_with_custom_sales = set(
-            custom_sales.exclude(lead_id=None).values_list("lead_id", flat=True)
+            paid_custom_sales.exclude(lead_id=None).values_list("lead_id", flat=True)
         )
         converted_lead_ids = lead_ids_with_orders | lead_ids_with_custom_sales
 
@@ -80,41 +132,59 @@ class DashboardView(APIView):
         if leads:
             conversion_rate = round((len(converted_lead_ids) / leads) * 100, 2)
 
-        recent_orders = []
-        for order in orders.order_by("-purchase_date", "-created_at")[:10]:
-            recent_orders.append(
-                {
-                    "id": order.id,
-                    "customer_name": (
-                        f"{order.customer_first_name} {order.customer_last_name}"
-                    ).strip(),
-                    "service": order.product_name,
-                    "type": "Website",
-                    "amount": str(order.total_amount),
-                    "status": order.payment_status,
-                    "date": order.purchase_date or order.created_at,
-                }
-            )
+        # Website orders section: only the five most recent in each tab.
+        active_orders_qs = (
+            all_orders
+            .filter(archived=False)
+            .order_by("-purchase_date", "-created_at")[:5]
+        )
+        archived_orders_qs = (
+            all_orders
+            .filter(archived=True)
+            .order_by("-purchase_date", "-created_at")[:5]
+        )
 
-        for sale in custom_sales.order_by("-sale_date", "-created_at")[:10]:
-            recent_orders.append(
-                {
-                    "id": sale.id,
-                    "customer_name": (
-                        f"{sale.customer_first_name} {sale.customer_last_name}"
-                    ).strip(),
-                    "service": sale.service_name,
-                    "type": "Custom",
-                    "amount": str(sale.amount),
-                    "status": sale.status,
-                    "date": sale.sale_date,
-                }
-            )
+        order_data = [_order_payload(order) for order in active_orders_qs]
+        archived_order_data = [
+            _order_payload(order) for order in archived_orders_qs
+        ]
 
-        recent_orders.sort(
+        # Recent activity: latest 10 across website + custom.
+        active_activity = [
+            _website_activity_payload(order)
+            for order in all_orders.filter(archived=False).order_by(
+                "-purchase_date", "-created_at"
+            )[:10]
+        ]
+        active_activity.extend(
+            _custom_activity_payload(sale)
+            for sale in all_custom_sales.filter(archived=False).order_by(
+                "-sale_date", "-created_at"
+            )[:10]
+        )
+        active_activity.sort(
             key=lambda item: item["date"] or timezone.now(),
             reverse=True,
         )
+        active_activity = active_activity[:10]
+
+        archived_activity = [
+            _website_activity_payload(order)
+            for order in all_orders.filter(archived=True).order_by(
+                "-purchase_date", "-created_at"
+            )[:10]
+        ]
+        archived_activity.extend(
+            _custom_activity_payload(sale)
+            for sale in all_custom_sales.filter(archived=True).order_by(
+                "-sale_date", "-created_at"
+            )[:10]
+        )
+        archived_activity.sort(
+            key=lambda item: item["date"] or timezone.now(),
+            reverse=True,
+        )
+        archived_activity = archived_activity[:10]
 
         inquiry_queryset = (
             referral.leads.filter(interest=Lead.Interest.CUSTOM_SERVICE)
@@ -136,27 +206,6 @@ class DashboardView(APIView):
                     "status": lead.status,
                     "status_display": lead.get_status_display(),
                     "created_at": lead.created_at,
-                }
-            )
-
-        order_data = []
-        for order in orders.order_by("-purchase_date", "-created_at")[:50]:
-            order_data.append(
-                {
-                    "id": order.id,
-                    "external_id": order.external_id,
-                    "reference": order.reference,
-                    "customer_name": (
-                        f"{order.customer_first_name} {order.customer_last_name}"
-                    ).strip(),
-                    "email": order.customer_email,
-                    "phone": order.customer_phone,
-                    "service": order.product_name,
-                    "amount": str(order.total_amount),
-                    "status": order.status,
-                    "payment_status": order.payment_status,
-                    "date": order.purchase_date or order.created_at,
-                    "match_method": order.match_method,
                 }
             )
 
@@ -185,8 +234,10 @@ class DashboardView(APIView):
                     "total_revenue": str(total_revenue),
                     "conversion_rate": conversion_rate,
                 },
-                "recent_activity": recent_orders[:10],
                 "orders": order_data,
+                "archived_orders": archived_order_data,
+                "recent_activity": active_activity,
+                "archived_activity": archived_activity,
                 "inquiries": inquiries,
             }
         )
