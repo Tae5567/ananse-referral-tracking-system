@@ -13,9 +13,8 @@ def backfill_total_paid(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("sales", "0005_order_customsale_archived"),
+        ("sales", "0006_order_customsale_archived"),
     ]
-
     operations = [
         migrations.AddField(
             model_name="customsale",
