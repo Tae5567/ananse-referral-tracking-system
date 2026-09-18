@@ -33,10 +33,16 @@ def _referral_metrics(referral, include_revenue=True):
             status="paid",
         )
         website_revenue = (
-            paid_orders.aggregate(total=Sum("total_amount"))["total"] or Decimal("0")
+            paid_orders.aggregate(total=Sum("subtotal"))["total"] or Decimal("0")
         )
         custom_revenue = (
             paid_custom_sales.aggregate(total=Sum("amount"))["total"] or Decimal("0")
+        )
+        website_customer_paid = (
+            paid_orders.aggregate(total=Sum("total_amount"))["total"] or Decimal("0")
+        )
+        custom_customer_paid = (
+            paid_custom_sales.aggregate(total=Sum("total_paid"))["total"] or Decimal("0")
         )
         metrics.update({
             "website_orders": paid_orders.count(),
@@ -45,6 +51,9 @@ def _referral_metrics(referral, include_revenue=True):
             "website_revenue": str(website_revenue),
             "custom_revenue": str(custom_revenue),
             "total_revenue": str(website_revenue + custom_revenue),
+            "total_customer_paid": str(
+                website_customer_paid + custom_customer_paid
+            ),
         })
 
     return metrics
@@ -70,10 +79,16 @@ class ManagerDashboardAPIView(APIView):
         paid_orders = Order.objects.filter(payment_status="paid")
         paid_custom_sales = CustomSale.objects.filter(status="paid")
         website_revenue = (
-            paid_orders.aggregate(total=Sum("total_amount"))["total"] or Decimal("0")
+            paid_orders.aggregate(total=Sum("subtotal"))["total"] or Decimal("0")
         )
         custom_revenue = (
             paid_custom_sales.aggregate(total=Sum("amount"))["total"] or Decimal("0")
+        )
+        website_customer_paid = (
+            paid_orders.aggregate(total=Sum("total_amount"))["total"] or Decimal("0")
+        )
+        custom_customer_paid = (
+            paid_custom_sales.aggregate(total=Sum("total_paid"))["total"] or Decimal("0")
         )
 
         staff_performance = []
@@ -158,6 +173,9 @@ class ManagerDashboardAPIView(APIView):
                 "website_orders": paid_orders.count(),
                 "custom_sales": paid_custom_sales.count(),
                 "total_revenue": str(website_revenue + custom_revenue),
+                "total_customer_paid": str(
+                    website_customer_paid + custom_customer_paid
+                ),
             },
             "staff_performance": staff_performance,
             "external_sources": external_sources,

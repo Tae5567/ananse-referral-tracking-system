@@ -45,8 +45,13 @@ class CustomSaleAdmin(admin.ModelAdmin):
         "customer_last_name",
         "service_name",
         "amount",
+        "tax_amount",
+        "security_deposit",
+        "total_paid",
+        "facility_type",
         "payment_method",
         "status",
+        "facility_type",
         "sale_date",
         "lead",
     )

@@ -365,16 +365,19 @@ function DashboardPage() {
 
                 <div className="mt-3 grid gap-3 md:grid-cols-3">
                     <MetricCard
-                        label="Website revenue"
+                        label="Website service revenue"
                         value={formatCurrency(stats.website_revenue)}
+                        helper={`Customer paid ${formatCurrency(stats.website_customer_paid)}`}
                     />
                     <MetricCard
-                        label="Custom revenue"
+                        label="Custom service revenue"
                         value={formatCurrency(stats.custom_revenue)}
+                        helper={`Customer paid ${formatCurrency(stats.custom_customer_paid)}`}
                     />
                     <MetricCard
-                        label="Total revenue"
+                        label="Total service revenue"
                         value={formatCurrency(stats.total_revenue)}
+                        helper={`Customer paid ${formatCurrency(stats.total_customer_paid)}`}
                     />
                 </div>
 
@@ -479,8 +482,14 @@ function DashboardPage() {
                                                     {order.service || "—"}
                                                 </td>
 
-                                                <td className="px-5 py-4 font-medium text-neutral-900">
-                                                    {formatCurrency(order.amount)}
+                                                <td className="px-5 py-4">
+                                                    <p className="font-medium text-neutral-900">
+                                                        {formatCurrency(order.total_paid)}
+                                                    </p>
+                                                    <p className="mt-0.5 text-xs text-neutral-400">
+                                                        Service {formatCurrency(order.service_value)}
+                                                        {" · "}Tax {formatCurrency(order.tax_amount)}
+                                                    </p>
                                                 </td>
 
                                                 <td className="px-5 py-4">
@@ -626,8 +635,17 @@ function DashboardPage() {
                                                     </span>
                                                 </td>
 
-                                                <td className="px-5 py-4 font-medium text-neutral-900">
-                                                    {formatCurrency(item.amount)}
+                                                <td className="px-5 py-4">
+                                                    <p className="font-medium text-neutral-900">
+                                                        {formatCurrency(item.total_paid)}
+                                                    </p>
+                                                    <p className="mt-0.5 text-xs text-neutral-400">
+                                                        Revenue {formatCurrency(item.revenue_amount)}
+                                                        {" · "}Tax {formatCurrency(item.tax_amount)}
+                                                        {Number(item.security_deposit || 0) > 0
+                                                            ? ` · Deposit ${formatCurrency(item.security_deposit)}`
+                                                            : ""}
+                                                    </p>
                                                 </td>
 
                                                 <td className="px-5 py-4">

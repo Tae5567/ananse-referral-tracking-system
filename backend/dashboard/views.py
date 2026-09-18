@@ -24,6 +24,11 @@ def _order_payload(order):
         "phone": order.customer_phone,
         "service": order.product_name,
         "amount": str(order.total_amount),
+        "service_value": str(order.subtotal),
+        "tax_amount": str(order.tax_amount),
+        "security_deposit": "0",
+        "total_paid": str(order.total_amount),
+        "revenue_amount": str(order.subtotal),
         "status": order.status,
         "payment_status": order.payment_status,
         "archived": order.archived,
@@ -41,6 +46,11 @@ def _website_activity_payload(order):
         "service": order.product_name,
         "type": "Website",
         "amount": str(order.total_amount),
+        "service_value": str(order.subtotal),
+        "tax_amount": str(order.tax_amount),
+        "security_deposit": "0",
+        "total_paid": str(order.total_amount),
+        "revenue_amount": str(order.subtotal),
         "status": order.payment_status,
         "archived": order.archived,
         "date": order.purchase_date or order.created_at,
@@ -55,7 +65,13 @@ def _custom_activity_payload(sale):
         ).strip(),
         "service": sale.service_name,
         "type": "Custom",
-        "amount": str(sale.amount),
+        "amount": str(sale.total_paid or sale.amount),
+        "service_value": str(sale.amount),
+        "tax_amount": str(sale.tax_amount),
+        "security_deposit": str(sale.security_deposit),
+        "total_paid": str(sale.total_paid or sale.amount),
+        "revenue_amount": str(sale.amount),
+        "facility_type": sale.facility_type,
         "status": sale.status,
         "archived": sale.archived,
         "date": sale.sale_date or sale.created_at,
@@ -98,7 +114,13 @@ class DashboardView(APIView):
         all_orders = Order.objects.filter(matched_lead__referral=referral)
         paid_orders = all_orders.filter(payment_status="paid")
 
+        # Revenue is the service value only. VAT is collected but is not
+        # referral revenue, so website revenue uses the CSV subtotal.
         website_revenue = (
+            paid_orders.aggregate(total=Sum("subtotal"))["total"]
+            or Decimal("0")
+        )
+        website_customer_paid = (
             paid_orders.aggregate(total=Sum("total_amount"))["total"]
             or Decimal("0")
         )
@@ -113,9 +135,14 @@ class DashboardView(APIView):
             paid_custom_sales.aggregate(total=Sum("amount"))["total"]
             or Decimal("0")
         )
+        custom_customer_paid = (
+            paid_custom_sales.aggregate(total=Sum("total_paid"))["total"]
+            or Decimal("0")
+        )
         custom_sale_count = paid_custom_sales.count()
 
         total_revenue = website_revenue + custom_revenue
+        total_customer_paid = website_customer_paid + custom_customer_paid
         total_conversions = website_orders + custom_sale_count
 
         lead_ids_with_orders = set(
@@ -232,6 +259,9 @@ class DashboardView(APIView):
                     "website_revenue": str(website_revenue),
                     "custom_revenue": str(custom_revenue),
                     "total_revenue": str(total_revenue),
+                    "website_customer_paid": str(website_customer_paid),
+                    "custom_customer_paid": str(custom_customer_paid),
+                    "total_customer_paid": str(total_customer_paid),
                     "conversion_rate": conversion_rate,
                 },
                 "orders": order_data,

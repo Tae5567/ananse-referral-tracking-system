@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.db import models
 
 from common.models import TimestampedModel
@@ -139,7 +141,35 @@ class CustomSale(TimestampedModel):
     """
     Manually recorded sale for services paid outside
     the Ananse Center for Design website.
+
+    ``amount`` is the service value before VAT and refundable deposits.
+    Revenue / commission calculations must use ``amount``, not ``total_paid``.
     """
+
+    TAX_RATE = Decimal("0.075")
+
+    FACILITY_CHOICES = [
+        ("", "No security deposit"),
+        ("auditorium", "Auditorium"),
+        ("machinery_room", "Machinery Room / Equipment Rental"),
+        ("meeting_room", "Meeting Room"),
+        ("training_room", "Training Room"),
+        ("showroom", "Showroom"),
+        ("cad_suite", "CAD Suite"),
+        ("podcast_room", "Podcast Room"),
+        ("photo_studio", "Photo Studio"),
+    ]
+
+    SECURITY_DEPOSIT_BY_FACILITY = {
+        "auditorium": Decimal("100000.00"),
+        "machinery_room": Decimal("100000.00"),
+        "meeting_room": Decimal("50000.00"),
+        "training_room": Decimal("50000.00"),
+        "showroom": Decimal("100000.00"),
+        "cad_suite": Decimal("100000.00"),
+        "podcast_room": Decimal("20000.00"),
+        "photo_studio": Decimal("50000.00"),
+    }
 
     PAYMENT_METHODS = [
         ("bank_transfer", "Bank Transfer"),
@@ -186,6 +216,33 @@ class CustomSale(TimestampedModel):
     amount = models.DecimalField(
         max_digits=12,
         decimal_places=2,
+        help_text="Service value before VAT and refundable security deposit.",
+    )
+
+    facility_type = models.CharField(
+        max_length=30,
+        choices=FACILITY_CHOICES,
+        blank=True,
+        default="",
+    )
+
+    tax_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+    )
+
+    security_deposit = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+    )
+
+    total_paid = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        help_text="Service value + VAT + refundable security deposit.",
     )
 
     payment_method = models.CharField(

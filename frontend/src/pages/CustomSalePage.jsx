@@ -10,6 +10,10 @@ function CustomSalePage() {
     const navigate = useNavigate();
 
     const [sources, setSources] = useState([]);
+    const [pricing, setPricing] = useState({
+        tax_rate: "0.075",
+        facilities: [],
+    });
     const [sourceLoading, setSourceLoading] = useState(true);
 
     const [form, setForm] = useState({
@@ -19,6 +23,7 @@ function CustomSalePage() {
         customer_phone: "",
         service_name: "",
         amount: "",
+        facility_type: "",
         payment_method: "bank_transfer",
         status: "paid",
         notes: "",
@@ -40,6 +45,12 @@ function CustomSalePage() {
                 const options = response.data.sources || [];
 
                 setSources(options);
+                setPricing(
+                    response.data.pricing || {
+                        tax_rate: "0.075",
+                        facilities: [],
+                    }
+                );
 
                 if (options.length > 0) {
                     setForm((current) => ({
@@ -109,6 +120,30 @@ function CustomSalePage() {
         }
     };
 
+    const serviceValue = Number(form.amount || 0);
+    const taxRate = Number(pricing.tax_rate || 0.075);
+    const taxAmount = serviceValue * taxRate;
+
+    const selectedFacility = (pricing.facilities || []).find(
+        (facility) => facility.value === form.facility_type
+    );
+
+    const securityDeposit = Number(
+        selectedFacility?.security_deposit || 0
+    );
+
+    const totalPaid =
+        serviceValue +
+        taxAmount +
+        securityDeposit;
+
+    const money = (value) =>
+        new Intl.NumberFormat("en-NG", {
+            style: "currency",
+            currency: "NGN",
+            maximumFractionDigits: 0,
+        }).format(Number(value || 0));
+
     if (submitted) {
         return (
             <DashboardLayout>
@@ -157,6 +192,7 @@ function CustomSalePage() {
                                                 customer_phone: "",
                                                 service_name: "",
                                                 amount: "",
+                                                facility_type: "",
                                                 notes: "",
                                                 sale_date:
                                                     new Date()
@@ -297,7 +333,7 @@ function CustomSalePage() {
 
                             <div>
                                 <label className="ui-label">
-                                    Amount
+                                    Service value (before 7.5% tax)
                                 </label>
                                 <input
                                     type="number"
@@ -309,6 +345,35 @@ function CustomSalePage() {
                                     className="ui-input mt-2 w-full"
                                     required
                                 />
+                            </div>
+
+                            <div>
+                                <label className="ui-label">
+                                    Facility / refundable security deposit
+                                </label>
+
+                                <select
+                                    name="facility_type"
+                                    value={form.facility_type}
+                                    onChange={handleChange}
+                                    className="ui-input mt-2 w-full"
+                                >
+                                    {(pricing.facilities || []).map((facility) => (
+                                        <option
+                                            key={facility.value || "none"}
+                                            value={facility.value}
+                                        >
+                                            {facility.label}
+                                            {Number(facility.security_deposit || 0) > 0
+                                                ? ` — ${money(facility.security_deposit)} deposit`
+                                                : ""}
+                                        </option>
+                                    ))}
+                                </select>
+
+                                <p className="mt-2 text-xs leading-5 text-neutral-400">
+                                    The security deposit is refundable and is not counted as revenue.
+                                </p>
                             </div>
 
                             <div>
@@ -369,6 +434,47 @@ function CustomSalePage() {
                                         Cancelled
                                     </option>
                                 </select>
+                            </div>
+
+                            <div className="sm:col-span-2 rounded-2xl border border-neutral-200 bg-[#FBFAF8] p-4">
+                                <p className="text-sm font-semibold text-neutral-900">
+                                    Customer payment breakdown
+                                </p>
+
+                                <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                                    <div className="flex justify-between gap-4">
+                                        <span className="text-neutral-500">Service value</span>
+                                        <span className="font-medium text-neutral-900">
+                                            {money(serviceValue)}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex justify-between gap-4">
+                                        <span className="text-neutral-500">Tax (7.5%)</span>
+                                        <span className="font-medium text-neutral-900">
+                                            {money(taxAmount)}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex justify-between gap-4">
+                                        <span className="text-neutral-500">Refundable deposit</span>
+                                        <span className="font-medium text-neutral-900">
+                                            {money(securityDeposit)}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex justify-between gap-4">
+                                        <span className="font-semibold text-neutral-900">Total customer pays</span>
+                                        <span className="font-semibold text-neutral-950">
+                                            {money(totalPaid)}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <p className="mt-3 text-xs leading-5 text-neutral-500">
+                                    Revenue / commission base: {money(serviceValue)}.
+                                    Tax and refundable deposits are excluded.
+                                </p>
                             </div>
 
                             <div className="sm:col-span-2">

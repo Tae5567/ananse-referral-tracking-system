@@ -16,8 +16,17 @@ class CustomSaleSerializer(serializers.ModelSerializer):
             "customer_phone",
             "service_name",
             "amount",
+            "facility_type",
+            "tax_amount",
+            "security_deposit",
+            "total_paid",
             "payment_method",
             "status",
             "notes",
             "sale_date",
+        ]
+        read_only_fields = [
+            "tax_amount",
+            "security_deposit",
+            "total_paid",
         ]

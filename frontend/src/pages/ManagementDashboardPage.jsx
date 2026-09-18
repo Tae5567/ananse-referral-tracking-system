@@ -50,7 +50,11 @@ function ManagementDashboardPage() {
                     <MetricCard label="Total leads" value={stats.leads || 0} helper={`${stats.active_leads || 0} active`} />
                     <MetricCard label="Website orders" value={stats.website_orders || 0} />
                     <MetricCard label="Custom sales" value={stats.custom_sales || 0} />
-                    <MetricCard label="Total revenue" value={money(stats.total_revenue)} />
+                    <MetricCard
+                        label="Total service revenue"
+                        value={money(stats.total_revenue)}
+                        helper={`Customer paid ${money(stats.total_customer_paid)}`}
+                    />
                 </div>
 
                 <SectionCard className="mt-5" title="Staff performance" description="Performance is attributed to each staff member's referral source.">

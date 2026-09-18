@@ -1,5 +1,6 @@
 import os
 import tempfile
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from django.core import management
 from django.db.models import Q
@@ -71,6 +72,22 @@ class CustomSaleSourceOptionsAPIView(APIView):
                 }
                 for referral in referrals
             ],
+            "pricing": {
+                "tax_rate": str(CustomSale.TAX_RATE),
+                "facilities": [
+                    {
+                        "value": value,
+                        "label": label,
+                        "security_deposit": str(
+                            CustomSale.SECURITY_DEPOSIT_BY_FACILITY.get(
+                                value,
+                                Decimal("0.00"),
+                            )
+                        ),
+                    }
+                    for value, label in CustomSale.FACILITY_CHOICES
+                ],
+            },
         })
 
 
@@ -85,6 +102,58 @@ class CustomSaleCreateView(APIView):
         first_name = data.get("customer_first_name", "").strip()
         last_name = data.get("customer_last_name", "").strip()
         service_name = data.get("service_name", "").strip()
+        facility_type = data.get("facility_type", "").strip()
+
+        try:
+            service_amount = Decimal(str(data.get("amount", "0")))
+        except (InvalidOperation, TypeError, ValueError):
+            service_amount = Decimal("0")
+
+        if service_amount <= 0:
+            return Response(
+                {
+                    "success": False,
+                    "error": "Service value must be greater than zero.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        valid_facilities = {
+            value
+            for value, _label in CustomSale.FACILITY_CHOICES
+        }
+
+        if facility_type not in valid_facilities:
+            return Response(
+                {
+                    "success": False,
+                    "error": "Invalid facility/security deposit option.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        tax_amount = (
+            service_amount * CustomSale.TAX_RATE
+        ).quantize(
+            Decimal("0.01"),
+            rounding=ROUND_HALF_UP,
+        )
+
+        security_deposit = (
+            CustomSale.SECURITY_DEPOSIT_BY_FACILITY.get(
+                facility_type,
+                Decimal("0.00"),
+            )
+        )
+
+        total_paid = (
+            service_amount +
+            tax_amount +
+            security_deposit
+        ).quantize(
+            Decimal("0.01"),
+            rounding=ROUND_HALF_UP,
+        )
 
         lead = None
 
@@ -209,16 +278,28 @@ class CustomSaleCreateView(APIView):
             lead.save(update_fields=list(dict.fromkeys(update_fields)))
 
         data["lead"] = lead.id
+        data["facility_type"] = facility_type
 
         serializer = CustomSaleSerializer(data=data)
 
         if serializer.is_valid():
-            sale = serializer.save()
+            sale = serializer.save(
+                tax_amount=tax_amount,
+                security_deposit=security_deposit,
+                total_paid=total_paid,
+            )
 
             return Response(
                 {
                     "success": True,
                     "sale": CustomSaleSerializer(sale).data,
+                    "financials": {
+                        "service_value": str(service_amount),
+                        "tax_amount": str(tax_amount),
+                        "security_deposit": str(security_deposit),
+                        "total_paid": str(total_paid),
+                        "revenue_amount": str(service_amount),
+                    },
                     "lead": {
                         "id": lead.id,
                         "name": (
