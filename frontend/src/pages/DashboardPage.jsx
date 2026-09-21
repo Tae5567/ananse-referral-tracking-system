@@ -367,17 +367,14 @@ function DashboardPage() {
                     <MetricCard
                         label="Website service revenue"
                         value={formatCurrency(stats.website_revenue)}
-                        helper={`Customer paid ${formatCurrency(stats.website_customer_paid)}`}
                     />
                     <MetricCard
                         label="Custom service revenue"
                         value={formatCurrency(stats.custom_revenue)}
-                        helper={`Customer paid ${formatCurrency(stats.custom_customer_paid)}`}
                     />
                     <MetricCard
                         label="Total service revenue"
                         value={formatCurrency(stats.total_revenue)}
-                        helper={`Customer paid ${formatCurrency(stats.total_customer_paid)}`}
                     />
                 </div>
 

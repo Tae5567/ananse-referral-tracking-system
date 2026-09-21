@@ -53,7 +53,6 @@ function ManagementDashboardPage() {
                     <MetricCard
                         label="Total service revenue"
                         value={money(stats.total_revenue)}
-                        helper={`Customer paid ${money(stats.total_customer_paid)}`}
                     />
                 </div>
 
